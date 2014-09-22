@@ -8,6 +8,7 @@ Maintainer: Tom Carroll <tc.infomatics@gmail.com>
 Description: Methods to create complex IGV genome browser sessions and dynamic
     IGV reports using Datatables Javascript libraries.
 biocViews: Sequencing, ReportWriting
+VignetteBuilder: knitr
 License: GPL (>= 3)
 LazyLoad: yes
 Depends:
