@@ -1,0 +1,212 @@
+%\VignetteIndexEntry{Creating IGV HTML reports with tracktables}
+%\VignettePackage{tracktables}
+%\VignetteEngine{knitr::knitr}
+
+% To compile this document
+% library('knitr'); rm(list=ls()); knit('tracktables.Rnw')
+
+\documentclass[12pt]{article}\usepackage[]{graphicx}\usepackage[usenames,dvipsnames]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+
+
+
+
+\RequirePackage{/home/pgellert/Downloads/R-3.1.0/library/BiocStyle/sty/Bioconductor}
+
+\AtBeginDocument{\bibliographystyle{/home/pgellert/Downloads/R-3.1.0/library/BiocStyle/sty/unsrturl}}
+
+
+
+
+
+\author{Thomas Carroll$^{1*}$\\[1em] \small{$^{1}$ Bioinformatics Facility, MRC Clincal Sciences Centre;} \\ \small{\texttt{$^*$thomas.carroll (at)imperial.ac.uk}}}
+
+\title{Creating IGV HTML reports with tracktables}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+
+
+
+\maketitle
+
+\begin{abstract}
+ 
+The visualisation of genomics data in genome browsers is a key step in both quality control and initial interrogation of hypothesis under investigation. 
+
+The organisation of large collections of genomics data (such as large scale High-thoughput sequencing data experiments) alongside assocated Sample or Experimental metadata allows for rapid evaluation of patterns across such experimental groups but such organisation maybe very time consuming.
+
+ The Tracktables package provides a set of tools to build IGV session files from sample files and associated metadata as well as produce IGV linked HTML reports for high thoroughput visualisation of sample data in IGV.
+ 
+  \vspace{1em}
+  
+  \end{abstract}
+
+
+
+\newpage
+
+\tableofcontents
+
+\section{Creating IGV sessions and HTML reports using tracktables}
+
+The three main functions within tracktables package are the MakeIGVSessionXML() and  MakeIGVSampleMetadata() functions for a creating IGV session for sample files and sample metadata and the maketracktable() function to create HTML pages with tables to control IGV alongside sample information and metadata,
+
+\subsection{Creating input files for tracktables}
+
+Tracktables functions require the user to provide both a matrix or dataframe of metadata information and one of sample file locations to be visualised in IGV. 
+
+These matricies/data-frames must both have one column names "SampleSheet" which contains unique sample IDs.
+
+The remaining metadata samplesheet columns may be user-defined but must all contain column titles. (See example below)
+The sample filesheet must contain the columns "SampleName", "bam","bigwig" and interval. These columns may contain NA values when no relavant file is associated to a sample.
+
+Here we create a small example SampleSheet (containing metadata) and FileSheet (containing file locations)
+
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{library}\hlstd{(tracktables)}
+
+\hlstd{fileLocations} \hlkwb{<-} \hlkwd{system.file}\hlstd{(}\hlstr{"extdata"}\hlstd{,}\hlkwc{package}\hlstd{=}\hlstr{"tracktables"}\hlstd{)}
+
+\hlstd{bigwigs} \hlkwb{<-} \hlkwd{dir}\hlstd{(fileLocations,}\hlkwc{pattern}\hlstd{=}\hlstr{"*.bw"}\hlstd{,}\hlkwc{full.names}\hlstd{=T)}
+
+\hlstd{intervals} \hlkwb{<-} \hlkwd{dir}\hlstd{(fileLocations,}\hlkwc{pattern}\hlstd{=}\hlstr{"*.bed"}\hlstd{,}\hlkwc{full.names}\hlstd{=T)}
+
+\hlstd{bigWigMat} \hlkwb{<-} \hlkwd{cbind}\hlstd{(}\hlkwd{gsub}\hlstd{(}\hlstr{"_Example.bw"}\hlstd{,}\hlstr{""}\hlstd{,}\hlkwd{basename}\hlstd{(bigwigs)),}
+                   \hlstd{bigwigs)}
+
+\hlstd{intervalsMat} \hlkwb{<-} \hlkwd{cbind}\hlstd{(}\hlkwd{gsub}\hlstd{(}\hlstr{"_Peaks.bed"}\hlstd{,}\hlstr{""}\hlstd{,}\hlkwd{basename}\hlstd{(intervals)),}
+                      \hlstd{intervals)}
+
+\hlstd{fileSheet} \hlkwb{<-} \hlkwd{merge}\hlstd{(bigWigMat,intervalsMat,}\hlkwc{all}\hlstd{=T)}
+
+\hlstd{fileSheet} \hlkwb{<-} \hlkwd{as.matrix}\hlstd{(}\hlkwd{cbind}\hlstd{(fileSheet,}\hlnum{NA}\hlstd{))}
+
+\hlkwd{colnames}\hlstd{(fileSheet)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"SampleName"}\hlstd{,}\hlstr{"bigwig"}\hlstd{,}\hlstr{"interval"}\hlstd{,}\hlstr{"bam"}\hlstd{)}
+
+\hlstd{SampleSheet} \hlkwb{<-} \hlkwd{cbind}\hlstd{(}\hlkwd{as.vector}\hlstd{(fileSheet[,}\hlstr{"SampleName"}\hlstd{]),}
+                     \hlkwd{c}\hlstd{(}\hlstr{"EBF"}\hlstd{,}\hlstr{"H3K4me3"}\hlstd{,}\hlstr{"H3K9ac"}\hlstd{,}\hlstr{"RNAPol2"}\hlstd{),}
+                     \hlkwd{c}\hlstd{(}\hlstr{"ProB"}\hlstd{,}\hlstr{"ProB"}\hlstd{,}\hlstr{"ProB"}\hlstd{,}\hlstr{"ProB"}\hlstd{))}
+
+\hlkwd{colnames}\hlstd{(SampleSheet)} \hlkwb{<-} \hlkwd{c}\hlstd{(}\hlstr{"SampleName"}\hlstd{,}\hlstr{"Antibody"}\hlstd{,}\hlstr{"Species"}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{head}\hlstd{(SampleSheet)}
+\end{alltt}
+\begin{verbatim}
+##      SampleName Antibody  Species
+## [1,] "EBF"      "EBF"     "ProB" 
+## [2,] "H3K4me3"  "H3K4me3" "ProB" 
+## [3,] "H3K9ac"   "H3K9ac"  "ProB" 
+## [4,] "RNAPol2"  "RNAPol2" "ProB"
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+
+The SampleSheet can be seen to contain a very small section of metadata for EBF, RNApol2, H3K4me3 and H3K9ac. SampleName column contains the unique IDs.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{head}\hlstd{(fileSheet)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+The FileSheet contains the "SampleName" column with unique ID which match with those found in the SampleSheet. The remaining columns of "bam","bigwig" and "interval" are also all present.
+
+Note that not all samples have intervals associated to them and ,here, none of these samples have BAM files associated to them. NA values within the fileSheet wil be ignored by tracktables.
+
+\subsection{Creating an IGV session XML file}
+
+Tracktables can create an IGV session XML and associated sample information file from this samplesheet and filesheet.
+
+In addition to the fileSheet and samplesheet, the MakeIGVSampleMetadata and MakeIGVSessionXML() functions require the location to write to, filename for XML and the genome to be used in IGV (see IGV for detials on supported genomes).
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{MakeIGVSampleMetadata}\hlstd{(SampleSheet,fileSheet,}\hlkwc{igvdirectory}\hlstd{=}\hlkwd{getwd}\hlstd{())}
+\hlkwd{MakeIGVSessionXML}\hlstd{(fileSheet,}\hlkwc{igvdirectory}\hlstd{=}\hlkwd{getwd}\hlstd{(),}\hlstr{"Example"}\hlstd{,}\hlstr{"mm9"}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+This creates two files in the current working directory containing the sample information file for IGV "SampleMetadata.txt" and the session itself to be loaded into IGV "Example.xml".
+
+
+\subsection{Creating a Tracktable report HTML page}
+
+As well as producing standalone session XMLs and sampleinformation files, tracktables package can produce HTML reports which contain metadata and link to control IGV.
+
+The report structure is made of a main "Tracktables Sample Report" which houses the metadata from "SampleSheet" and links to open sample files in IGV. All sample files are associated with their relevant sample metadata and grouped together by their unique SampleName. When a sample has an interval files associated to it, the "Tracktables Sample Report" also contains a link to a further sample specific "Tracktables Interval Report". This interval report contains a table of interval locations, any metadata associated with intervals and further links to focus IGV on that Intervals region. 
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+  \hlstd{HTMLreport} \hlkwb{<-} \hlkwd{maketracktable}\hlstd{(fileSheet,SampleSheet,}
+                               \hlstr{"IGV_Example"}\hlstd{,}
+                               \hlkwc{basedirectory}\hlstd{=}\hlkwd{getwd}\hlstd{(),}
+                               \hlstr{"mm9"}\hlstd{)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\bibliography{library}
+
+\end{document}
