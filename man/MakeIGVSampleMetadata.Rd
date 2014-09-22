@@ -19,14 +19,11 @@ Creates sample metadata file for IGV from data.frames of user supplied metadata 
 file locations
 }
 \examples{
-\dontrun{
-library(tracktables)
-
 fileLocations <- system.file("extdata",package="tracktables")
 
-bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
 
-intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
 
 bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
                    bigwigs)
@@ -34,7 +31,7 @@ bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
 intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
                       intervals)
 
-fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+fileSheet <- merge(bigWigMat,intervalsMat,all=TRUE)
 
 fileSheet <- as.matrix(cbind(fileSheet,NA))
 
@@ -46,7 +43,6 @@ SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
 
 colnames(SampleSheet) <- c("SampleName","Antibody","Species")
 MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory=getwd())
-}
 }
 \author{
 Thomas Carroll

@@ -17,17 +17,13 @@ makebedtable(grangesObject, name, basedirectory)
 Creates HTML page for interval files or GRanges
 }
 \examples{
-\dontrun{
-library(tracktables)
-
 fileLocations <- system.file("extdata",package="tracktables")
 
-bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
 
-intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
-intervalGRanges <- GetGRanges(intervals[1])
+intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
+intervalGRanges <- tracktables:::GetGRanges(intervals[1])
 htmlpage <- makebedtable(intervalGRanges,"EBF_PeaksTable.html",getwd())
-}
 }
 \author{
 Thomas Carroll

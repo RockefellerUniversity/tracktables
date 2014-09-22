@@ -21,14 +21,11 @@ maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome)
 Creates HTML page for IGV sessions
 }
 \examples{
-\dontrun{
-library(tracktables)
-
 fileLocations <- system.file("extdata",package="tracktables")
 
-bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
 
-intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
 
 bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
                    bigwigs)
@@ -36,7 +33,7 @@ bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
 intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
                       intervals)
 
-fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+fileSheet <- merge(bigWigMat,intervalsMat,all=TRUE)
 
 fileSheet <- as.matrix(cbind(fileSheet,NA))
 
@@ -51,7 +48,6 @@ colnames(SampleSheet) <- c("SampleName","Antibody","Species")
                                "IGV_Example",
                                basedirectory=getwd(),
                                "mm9")
-}
 }
 \author{
 Thomas Carroll

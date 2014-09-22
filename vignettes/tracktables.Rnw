@@ -29,7 +29,14 @@ library("tracktables")
 \title{Creating IGV HTML reports with tracktables}
 
 \begin{document}
-\SweaveOpts{concordance=TRUE}
+
+<<include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+concordance=TRUE
+)
+@
+
 
 \maketitle
 
@@ -74,9 +81,9 @@ library(tracktables)
 
 fileLocations <- system.file("extdata",package="tracktables")
 
-bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
 
-intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
 
 bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
                    bigwigs)
@@ -84,7 +91,7 @@ bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
 intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
                       intervals)
 
-fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+fileSheet <- merge(bigWigMat,intervalsMat,all=TRUE)
 
 fileSheet <- as.matrix(cbind(fileSheet,NA))
 
@@ -137,8 +144,5 @@ The report structure is made of a main "Tracktables Sample Report" which houses 
                                basedirectory=getwd(),
                                "mm9")
 @
-
-
-\bibliography{library}
 
 \end{document}
