@@ -2,19 +2,19 @@
 \docType{methods}
 \name{makebedtable}
 \alias{makebedtable}
-\title{Make HTML page for interval files or GRanges}
+\title{Make HTML pages for interval files or GRanges.}
 \usage{
 makebedtable(grangesObject, name, basedirectory)
 }
 \arguments{
-\item{grangesObject}{A GRanges or object which may be parsed by ChIPQC GetGRanges method.}
+\item{grangesObject}{A GRanges object.}
 
-\item{name}{Name for IGV session xml}
+\item{name}{Character of the name for Interval HTML report.}
 
-\item{basedirectory}{Directory to write IGV xml file}
+\item{basedirectory}{Character of the directory to which HTML report is writen.}
 }
 \description{
-Creates HTML page for interval files or GRanges
+Creates HTML pages for interval files or GRanges (Tracktables Interval Report).
 }
 \examples{
 fileLocations <- system.file("extdata",package="tracktables")

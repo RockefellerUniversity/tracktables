@@ -4,19 +4,18 @@
 \alias{MakeIGVSampleMetadata}
 \title{Make sample metadata file for use with IGV.}
 \usage{
-MakeIGVSampleMetadata(sampleMetadata, SampleSheet, igvdirectory)
+MakeIGVSampleMetadata(SampleSheet, fileSheet, igvdirectory)
 }
 \arguments{
-\item{sampleMetadata}{A data.frame object with metadata information for samples.
+\item{SampleSheet}{A data.frame object with metadata information for samples.
 First column must contain unique sample ids.}
 
-\item{SampleSheet}{A data.frame of file locations. First column must contain the unique sample ids.}
+\item{fileSheet}{A data.frame of file locations. First column must contain the unique sample ids.}
 
-\item{igvdirectory}{where igv xml files are located}
+\item{igvdirectory}{A character of the directory to which sample metadata file is written.}
 }
 \description{
-Creates sample metadata file for IGV from data.frames of user supplied metadata and
-file locations
+Creates sample metadata file for IGV from a Samplesheet of metadata and FileSheet of file locations.
 }
 \examples{
 fileLocations <- system.file("extdata",package="tracktables")

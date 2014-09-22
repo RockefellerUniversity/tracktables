@@ -2,23 +2,23 @@
 \docType{methods}
 \name{maketracktable}
 \alias{maketracktable}
-\title{Make HTML page for IGV sessions}
+\title{Make HTML pages for IGV sessions (Tracktables Experiment Report)}
 \usage{
 maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome)
 }
 \arguments{
-\item{fileSheet}{A data frame or matrix containing sample file locations (e.g. BigWig locations).}
+\item{fileSheet}{A data frame containing sample file locations (e.g. BigWig locations).}
 
-\item{SampleSheet}{A data frame or matrix containing sample metadata}
+\item{SampleSheet}{A data frame containing sample metadata}
 
-\item{filename}{Character string for tracktables HTML report}
+\item{filename}{Character of name for tracktables HTML report. (.html prefix is added automatically)}
 
-\item{basedirectory}{Character string for directory for tracktables HTML report, IGV sessions and any interval files}
+\item{basedirectory}{Character of directory for tracktables HTML report, IGV sessions and any interval files}
 
-\item{genome}{Character string of genome for IGV}
+\item{genome}{Character of genome for IGV (See IGV user guide for details)}
 }
 \description{
-Creates HTML page for IGV sessions
+Creates HTML table of sample metadata and all required files for interacting with IGV.
 }
 \examples{
 fileLocations <- system.file("extdata",package="tracktables")
