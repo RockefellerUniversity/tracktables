@@ -14,7 +14,7 @@
 #' @param sampleMetadata A data.frame object with metadata information for samples.
 #'  First column must contain unique sample ids. 
 #' @param SampleSheet A data.frame of file locations. First column must contain the unique sample ids.
-#' @param Directory where igv xml files are located
+#' @param igvdirectory where igv xml files are located
 #' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML
 #' @include igvtrackhubs.r
 #' @examples
@@ -81,7 +81,6 @@ MakeIGVSampleMetadata <- function(sampleMetadata,SampleSheet,igvdirectory){
 #' @param SampleSheet A samplesheet containing file locations 
 #' @param igvdirectory Directory for IGV
 #' @param XMLname Name for IGV session xml
-#' @param IGVdirectory Directory to write IGV xml file
 #' @param genomeName genome for IGV
 #' @param locusName locus to display in igv on loading
 #' @examples
@@ -116,7 +115,6 @@ MakeIGVSampleMetadata <- function(sampleMetadata,SampleSheet,igvdirectory){
 #' @export
 MakeIGVSessionXML <- function(SampleSheet,igvdirectory,XMLname,genomeName,locusName="All"){
   i <- 1
-  require(XML)
   SampleSheet <- as.matrix(SampleSheet)
   Output <- file.path(igvdirectory,paste(XMLname,".xml",sep=""))
   GlobalNode <- newXMLNode("Global",attrs=c(genome.value=genomeName,groupTracksBy="Linking_id",locus=locusName,version=3))
@@ -168,12 +166,13 @@ MakeIGVSessionXML <- function(SampleSheet,igvdirectory,XMLname,genomeName,locusN
 #' 
 #' @author Thomas Carroll
 #'
-#' @param fileSheet A data frame, matrix or character containing sample information locations
-#' @param SampleSheet A data frame, matrix or character containing sample information locations 
-#' @param igvdirectory Directory for IGV
-#' @param filename Name for IGV session xml
-#' @param basedirectory Directory to write IGV xml file
-#' @param genome genome for IGV
+#' @param fileSheet A data frame or matrix containing sample file locations (e.g. BigWig locations). 
+#' @param SampleSheet A data frame or matrix containing sample metadata
+#' @param filename Character string for tracktables HTML report
+#' @param basedirectory Character string for directory for tracktables HTML report, IGV sessions and any interval files 
+#' @param genome Character string of genome for IGV
+#' @examples
+#' \dontrun{
 #' library(tracktables)
 #' 
 #' fileLocations <- system.file("extdata",package="tracktables")
@@ -229,7 +228,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
   giHTMLLinks <- vector("character",nrow(fileSheet))
   for(l in 1:nrow(fileSheet)){
     if(!is.na(fileSheet[l,"interval"])){
-       giHTMLs[l] <- makebedtable(ChIPQC:::GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),basedirectory)  
+       giHTMLs[l] <- makebedtable(GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),basedirectory)  
        giHTMLLinks[l] <- paste0("\"<a href=\\\"",file.path(basedirectory,basename(giHTMLs[l])),"\\\">Intervals</a>\"")
     }else{
       giHTMLLinks[l] <- shQuote("No Intervals")
@@ -237,7 +236,6 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
     }
   }
   
-  library(RJSONIO)
   files <- unlist(lapply(xmlFiles,function(x)relativePath(x,
                                                           gsub("//","/",file.path(basedirectory,filename))
   )))
@@ -349,6 +347,18 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
 #' @param grangesObject A GRanges or object which may be parsed by ChIPQC GetGRanges method.
 #' @param name Name for IGV session xml
 #' @param basedirectory Directory to write IGV xml file
+#' @examples
+#' \dontrun{
+#' library(tracktables)
+#' 
+#' fileLocations <- system.file("extdata",package="tracktables")
+#' 
+#' bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+#' 
+#' intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+#' intervalGRanges <- GetGRanges(intervals[1])
+#' htmlpage <- makebedtable(intervalGRanges,"EBF_PeaksTable.html",getwd())
+#' }
 #' @export
 makebedtable <- function(grangesObject,name,basedirectory){
   
@@ -446,5 +456,53 @@ makebedtable <- function(grangesObject,name,basedirectory){
   saveXML(doc,file=file.path(basedirectory,name),doctype="html")
   
   
+}
+
+
+
+GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr="\t",simplify=FALSE){
+  #    require(Rsamtools)
+  #    require(GenomicRanges)
+  
+  if(class(LoadFile) == "GRanges"){
+    RegionRanges <- LoadFile
+    if(simplify){
+      RegionRanges <- GRanges(seqnames(RegionRanges),ranges(RegionRanges))
+    }
+  }else{
+    if(class(LoadFile) == "character"){
+      RangesTable <- read.delim(LoadFile,sep=sepr,header=TRUE,comment.char="#")
+    }else if(class(LoadFile) == "matrix"){
+      RangesTable <- as.data.frame(LoadFile)
+    } else{
+      RangesTable <- as.data.frame(LoadFile)
+    }
+    Chromosomes <- as.vector(RangesTable[,1])
+    Start <- as.numeric(as.vector(RangesTable[,2]))
+    End <- as.numeric(as.vector(RangesTable[,3]))
+    RegionRanges <- GRanges(seqnames=Chromosomes,ranges=IRanges(start=Start,end=End))
+    if(simple == FALSE){
+      if(ncol(RangesTable) > 4){
+        ID <- as.vector(RangesTable[,4])
+        Score <- as.vector(RangesTable[,5])
+        if(ncol(RangesTable) > 6){
+          Strand <- rep("*",nrow(RangesTable))
+          RemainderColumn <- as.data.frame(RangesTable[,-c(1:6)])
+          elementMetadata(RegionRanges) <- cbind(ID,Score,Strand,RemainderColumn)
+        }else{
+          elementMetadata(RegionRanges) <- cbind(ID,Score)
+        }
+      }
+    }
+  }
+  if(!is.null(AllChr)){ 
+    RegionRanges <- RegionRanges[seqnames(RegionRanges) %in% AllChr]    
+    seqlevels(RegionRanges,force=TRUE) <- AllChr
+  }
+  if(!is.null(ChrOfInterest)){      
+    RegionRanges <- RegionRanges[seqnames(RegionRanges) == ChrOfInterest]      
+  }
+  
+  return(RegionRanges)
 }
 

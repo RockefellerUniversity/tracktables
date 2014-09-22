@@ -11,18 +11,12 @@ biocViews: Sequencing, ReportWriting
 License: GPL (>= 3)
 LazyLoad: yes
 Depends:
-    R (>= 3.0.0),BiocGenerics
+    R (>= 3.0.0)
 Imports:
     IRanges,
-    ggplot2,
-    QuasR,
-    rtracklayer,
-    GenomicAlignments,
     GenomicRanges,
     XVector,
     Rsamtools,
-    reshape2,
-    Biostrings,
     XML,
     tractor.base,
     stringr
