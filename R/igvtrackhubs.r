@@ -17,6 +17,35 @@
 #' @param Directory where igv xml files are located
 #' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML
 #' @include igvtrackhubs.r
+#' @examples
+#' \dontrun{
+#' library(tracktables)
+#' 
+#' fileLocations <- system.file("extdata",package="tracktables")
+#' 
+#' bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+#' 
+#' intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+#' 
+#' bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
+#'                    bigwigs)
+#' 
+#' intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
+#'                       intervals)
+#' 
+#' fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+#' 
+#' fileSheet <- as.matrix(cbind(fileSheet,NA))
+#' 
+#' colnames(fileSheet) <- c("SampleName","bigwig","interval","bam")
+#' 
+#' SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
+#'                      c("EBF","H3K4me3","H3K9ac","RNAPol2"),
+#'                      c("ProB","ProB","ProB","ProB"))
+#' 
+#' colnames(SampleSheet) <- c("SampleName","Antibody","Species")
+#' MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory=getwd())
+#' }
 #' @export
 MakeIGVSampleMetadata <- function(sampleMetadata,SampleSheet,igvdirectory){
   write.table("#sampleTable",file.path(igvdirectory,"SampleMetadata.txt"),row.names=F,col.names=F,quote=F,sep="\t")
@@ -37,45 +66,9 @@ MakeIGVSampleMetadata <- function(sampleMetadata,SampleSheet,igvdirectory){
   write.table(IntervalMappings,file.path(igvdirectory,"SampleMetadata.txt"),row.names=F,col.names=F,quote=F,append=T,sep="\t")
 }
 
-#' Make session xml.
+#' Make IGV session xml
 #'
-#' Creates session for IGV from ChIPQC object
-#' 
-#'
-#'
-#' @docType methods
-#' @name makeTrackHub
-#' @rdname makeTrackHub
-#' 
-#' @author Thomas Carroll
-#'
-#' @param QCobject A ChIPQC object 
-#' @param peaksDir Directory containing peaks
-#' @param bigwigDir Directory containing bigwigs
-#' @param IGVdirectory Directory to write IGV xml file
-#' @param genome genome for IGV
-#' @export
-makeTrackHub <- function(QCobject,peaksDir,bigwigDir,IGVdirectory,genome){
-  dir.create(IGVdirectory,showWarnings=F)  
-  ss <- QCmetadata(QCobject)
-  SampleSheet <- ss[,c("ID","Tissue","Factor")]
-  colnames(SampleSheet)[1] <- "SampleName"
-  fileSheet <- cbind(ss[,c("ID"),drop=F],rep(NA,nrow(ss)))
-  peaks <- gsub("/+","/",dir(peaksDir,pattern="*peaks.bed",full.names=T))
-  names(peaks) <- gsub("_WithInput.*","",basename(peaks))
-  bigwigs <- gsub("/+","/",dir(bigwigDir,pattern="*.Dup.*\\.bw",full.names=T))
-  names(bigwigs) <- gsub("DupMarkedNormalised.bw","",basename(bigwigs))
-  fileSheet <- merge(fileSheet,cbind(names(peaks),peaks),all=T,by=1,all.x=T,all.y=F)
-  fileSheet <- merge(fileSheet,cbind(names(bigwigs),bigwigs),all=T,by=1,all.x=T,all.y=F)
-  colnames(SampleSheet) <- c("SampleName",'Tissue',"Factor")
-  colnames(fileSheet) <- c("SampleName","bam","bigwig","interval") 
-  MakeIGVSampleMetadata(SampleSheet,fileSheet,IGVdirectory)
-  return(MakeIGVSessionXML(fileSheet,IGVdirectory,"IGVfull",genome,locusName="All"))
-}
-
-#' Make session xml per file
-#'
-#' Creates session for IGV per file
+#' Creates session XML for IGV from Samplesheet and filesheet
 #' 
 #'
 #'
@@ -91,6 +84,35 @@ makeTrackHub <- function(QCobject,peaksDir,bigwigDir,IGVdirectory,genome){
 #' @param IGVdirectory Directory to write IGV xml file
 #' @param genomeName genome for IGV
 #' @param locusName locus to display in igv on loading
+#' @examples
+#' \dontrun{
+#' library(tracktables)
+#' 
+#' fileLocations <- system.file("extdata",package="tracktables")
+#' 
+#' bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+#' 
+#' intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+#' 
+#' bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
+#'                    bigwigs)
+#' 
+#' intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
+#'                       intervals)
+#' 
+#' fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+#' 
+#' fileSheet <- as.matrix(cbind(fileSheet,NA))
+#' 
+#' colnames(fileSheet) <- c("SampleName","bigwig","interval","bam")
+#' 
+#' SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
+#'                      c("EBF","H3K4me3","H3K9ac","RNAPol2"),
+#'                      c("ProB","ProB","ProB","ProB"))
+#' 
+#' colnames(SampleSheet) <- c("SampleName","Antibody","Species")
+#' MakeIGVSessionXML(fileSheet,igvdirectory=getwd(),"Example","mm9")
+#' }
 #' @export
 MakeIGVSessionXML <- function(SampleSheet,igvdirectory,XMLname,genomeName,locusName="All"){
   i <- 1
@@ -152,6 +174,36 @@ MakeIGVSessionXML <- function(SampleSheet,igvdirectory,XMLname,genomeName,locusN
 #' @param filename Name for IGV session xml
 #' @param basedirectory Directory to write IGV xml file
 #' @param genome genome for IGV
+#' library(tracktables)
+#' 
+#' fileLocations <- system.file("extdata",package="tracktables")
+#' 
+#' bigwigs <- dir(fileLocations,pattern="*.bw",full.names=T)
+#' 
+#' intervals <- dir(fileLocations,pattern="*.bed",full.names=T)
+#' 
+#' bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
+#'                    bigwigs)
+#' 
+#' intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
+#'                       intervals)
+#' 
+#' fileSheet <- merge(bigWigMat,intervalsMat,all=T)
+#' 
+#' fileSheet <- as.matrix(cbind(fileSheet,NA))
+#' 
+#' colnames(fileSheet) <- c("SampleName","bigwig","interval","bam")
+#' 
+#' SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
+#'                      c("EBF","H3K4me3","H3K9ac","RNAPol2"),
+#'                      c("ProB","ProB","ProB","ProB"))
+#' 
+#' colnames(SampleSheet) <- c("SampleName","Antibody","Species")
+#'   HTMLreport <- maketracktable(fileSheet,SampleSheet,
+#'                                "IGV_Example",
+#'                                basedirectory=getwd(),
+#'                                "mm9")
+#' }
 #' @export
 maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
   
