@@ -40,9 +40,15 @@ concordance=TRUE
 
 \maketitle
 
-\begin{abstract}
- 
- 
+
+<<options, results="hide", echo=FALSE>>=
+options(digits=3, width=80, prompt=" ", continue=" ")
+@
+
+\tableofcontents
+
+\section{The tracktables package}
+
  Visualising genomics data in genome browsers is a key step in both quality control and the initial interrogation of the hypothesis under investigation. 
 
  The organisation of large collections of genomics data (such as from large scale high-thoughput sequencing experiments) alongside associated sample or experimental metadata allows for the rapid evaluation of patterns across experimental groups. 
@@ -52,16 +58,6 @@ concordance=TRUE
   This use of sample metadata, alongside the ability to control IGV through ports, provides the desired framework to rapidly interrogate large cohorts of genomics data once the appropriate file types are built.
   
  The Tracktables package provides a set of tools to build IGV session files from data-frames of sample files and their associated metadata as well as produce IGV linked HTML reports for high-throughput visualisation of sample data in IGV.
- 
-  \vspace{1em}
-  
-  \end{abstract}
-
-<<options, results="hide", echo=FALSE>>=
-options(digits=3, width=80, prompt=" ", continue=" ")
-@
-
-\tableofcontents
 
 \section{Creating IGV sessions and HTML reports using tracktables}
 
@@ -110,10 +106,15 @@ head(SampleSheet)
 @
 
 The FileSheet contains the "SampleName" column with unique ID which match with those found in the SampleSheet. The remaining columns of "bam","bigwig" and "interval" are also all present.
-
-
-<<quick99, eval=TRUE>>=
+<<quick997, eval=FALSE>>=
 head(FileSheet)
+@
+
+<<quick99, eval=TRUE,echo=FALSE>>=
+FileSheetEdited <- FileSheet
+FileSheetEdited[,2] <- file.path("pathTo",basename(FileSheetEdited[,2]))
+FileSheetEdited[1,3] <- file.path("pathTo",basename(FileSheetEdited[1,3]))
+head(FileSheetEdited)
 @
 
 Note that not all samples have intervals associated to them and ,here, none of these samples have BAM files associated to them. NA values within the FileSheet will be ignored by \texttt{tracktables} functions.
@@ -126,7 +127,7 @@ In addition to the FileSheet and SampleSheet, the \Rfunction{MakeIGVSession()} f
 
 <<IGVsessionAndSample, eval=FALSE>>=
 
-MakeIGVSession(FileSheet,igvdirectory=getwd(),"Example","mm9")
+MakeIGVSession(SampleSheet,FileSheet,igvdirectory=getwd(),"Example","mm9")
 @
 
 This creates two files in the current working directory containing the sample information file for IGV ("SampleMetadata.txt") and the session XML itself to be loaded into IGV ("Example.xml").
