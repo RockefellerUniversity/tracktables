@@ -9,7 +9,7 @@ Description: Methods to create complex IGV genome browser sessions and dynamic
     IGV reports in HTML pages.
 biocViews: Sequencing, ReportWriting
 VignetteBuilder: knitr
-License: MIT
+License: MIT + file LICENSE
 LazyLoad: yes
 Depends:
     R (>= 3.0.0)
