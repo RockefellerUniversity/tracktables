@@ -19,10 +19,6 @@ opts_chunk$set(tidy=FALSE,dev="png",fig.show="hide",
 BiocStyle::latex()
 @
 
-<<loadDESeq2, echo=FALSE>>=
-library("tracktables")
-@
-
 
 \author{Thomas Carroll$^{1*}$\\[1em] \small{$^{1}$ Bioinformatics Core, MRC Clinical Sciences Centre;} \\ \small{\texttt{$^*$thomas.carroll (at)imperial.ac.uk}}}
 
@@ -49,36 +45,35 @@ options(digits=3, width=80, prompt=" ", continue=" ")
 
 \section{The tracktables package}
 
- Visualising genomics data in genome browsers is a key step in both quality control and the initial interrogation of the hypothesis under investigation. 
+ Visualising genomics data in genome browsers is a key step in both quality control and the initial interrogation of any hypothesis under investigation. 
 
- The organisation of large collections of genomics data (such as from large scale high-thoughput sequencing experiments) alongside associated sample or experimental metadata allows for the rapid evaluation of patterns across experimental groups. 
+ The organisation of large collections of genomics data (such as from large scale high-thoughput sequencing experiments) alongside their associated sample or experimental metadata allows for the rapid evaluation of patterns across experimental groups. 
 
-  Broad's Intergrative Genome Viewer (IGV) provides a set of methods to make use of sample metadata when visualising genomics data. As well as assisting in the identifaction of sample types within the genome browser, this sample metadata can be further used in IGV to group, sort and filter samples.
+  Broad's Intergrative Genome Viewer (IGV) provides a set of methods to make use of sample metadata when visualising genomics data. As well as identifying sample metadata within the genome browser, this sample information can be used in IGV to group, sort and filter samples.
   
-  This use of sample metadata, alongside the ability to control IGV through ports, provides the desired framework to rapidly interrogate large cohorts of genomics data once the appropriate file types are built.
+  This use of sample metadata, alongside the ability to control IGV through ports, provides the desired framework to rapidly interrogate large cohorts of genomics data once the appropriate file structure is built.
   
  The Tracktables package provides a set of tools to build IGV session files from data-frames of sample files and their associated metadata as well as produce IGV linked HTML reports for high-throughput visualisation of sample data in IGV.
 
 \section{Creating IGV sessions and HTML reports using tracktables}
 
-The two main functions within the \texttt{tracktables} package are the \Rfunction{MakeIGVSession()} function for  creating IGV session XMLs and any associated sample metadata files and the \Rfunction{maketracktable()} function to create HTML pages containing sample metadata and interval tables which can be used to control IGV.
+The two main functions within the \texttt{tracktables} package are the \Rfunction{MakeIGVSession()} function for  creating IGV session XMLs and any associated sample metadata files and the \Rfunction{maketracktable()} function to create HTML pages containing the sample metadata and interval tables used to control IGV.
 
 \subsection{Creating input files for tracktables}
 
-\texttt{tracktables} functions require the user to provide both a data-frame of metadata information and one of sample file locations to be visualised in IGV. 
+\texttt{tracktables} functions require the user to provide both a data-frame of metadata information and a data-frame of the paths of sample files to be visualised in IGV. 
 
 These data-frames must both have one column named "SampleName" which contains unique sample IDs. This column will be used to match samples and only samples within both files will be included in the IGV session.
 
 The remaining metadata SampleSheet columns may be user-defined but must all contain column titles. (See example below)
 
-The FileSheet (with file locations) must contain the columns "SampleName", "bam","bigwig" and "interval". These columns may contain NA values when no relavant file is associated to a sample.
+The FileSheet (with file paths) must contain the columns "SampleName", "bam","bigwig" and "interval". These columns may contain NA values when no relavant file is associated to a sample.
 
-Here we create a small example SampleSheet (containing metadata) and FileSheet (containing file locations) from some Histone, RNA polymerase 2 and Ebf ChIP-seq.
+Here we create a small example SampleSheet (containing metadata) and FileSheet (containing file locations) from some example histone mark, RNA polymerase 2 and Ebf ChIP-seq.
 
 
 <<inputdata, eval=TRUE>>=
 library(tracktables)
-
 fileLocations <- system.file("extdata",package="tracktables")
 
 bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
@@ -99,13 +94,13 @@ colnames(SampleSheet) <- c("SampleName","Antibody","Species")
 
 @
 
-The SampleSheet can be seen to contain a very small section of metadata for EBF, RNApol2, H3K4me3 and H3K9ac. "SampleName" column contains the unique IDs.
+The SampleSheet contains a small section of metadata for the EBF, RNApol2, H3K4me3 and H3K9ac ChIP. The "SampleName" column contains the unique IDs.
 
 <<quick7, eval=TRUE>>=
 head(SampleSheet)
 @
 
-The FileSheet contains the "SampleName" column with unique ID which match with those found in the SampleSheet. The remaining columns of "bam","bigwig" and "interval" are also all present.
+The FileSheet contains the "SampleName" column with unique IDs matching those founds in the SampleSheet. The remaining columns are "bam","bigwig" and "interval" and list the full paths of relevant files to be displayed in IGV.
 <<quick997, eval=FALSE>>=
 head(FileSheet)
 @
@@ -133,13 +128,13 @@ MakeIGVSession(SampleSheet,FileSheet,igvdirectory=getwd(),"Example","mm9")
 This creates two files in the current working directory containing the sample information file for IGV ("SampleMetadata.txt") and the session XML itself to be loaded into IGV ("Example.xml").
 
 
-\subsection{Creating a Tracktable report HTML pages}
+\subsection{Creating a Tracktable HTML report}
 
-As well as producing standalone session XMLs and sample information files, the \texttt{tracktables} package can produce HTML reports which contain metadata and methods to control IGV.
+As well as producing session XMLs and sample information files, the \texttt{tracktables} package can produce HTML reports which contain metadata and methods to control IGV.
 
-The report structure is made of a main "Tracktables Experiment Report" which houses the metadata from "SampleSheet" and links to open a sample's files in IGV (the sample's bigwig, bam or interval files). All sample files are associated with their relevant sample metadata and grouped together by their unique "SampleName". 
+The report structure is made of a main \textbf{Tracktables Experiment Report} which houses the metadata from the SampleSheet data-frame and links to open a sample's files in IGV (the sample's bigwig, bam or interval files). All sample files are associated with their relevant sample metadata and grouped together by their unique sample name. 
 
-When a sample has an interval file associated to it, the "Tracktables Experiment Report" also contains a link to a further sample specific "Tracktables Interval Report". This interval report contains a table of interval locations, any metadata associated with intervals and further links to focus IGV on an interval's genomic location. 
+When a sample has an interval file associated to it, the Tracktables Experiment Report also contains a link to a further sample specific  \textbf{Tracktables Interval Report}. This interval report contains a table of interval locations, any metadata associated with intervals and further links to focus IGV on an interval's genomic location. 
 
 <<quick5, eval=FALSE>>=
   HTMLreport <- maketracktable(FileSheet,SampleSheet,
@@ -148,8 +143,8 @@ When a sample has an interval file associated to it, the "Tracktables Experiment
                                "mm9")
 @
 
-The maketracktables() function, here, creates an HTML report "IGVExample.html" (the Tracktables Experiment Report) in the current working directory alongside the relevant sample IGV session XMLs, Tracktables Interval Reports and sample information files. The function also returns the XML doc to allow the user to add further customisation to the main report.
+In this example the maketracktables() function creates an HTML report "IGVExample.html" ( The Tracktable Experiment Report) in the current working directory alongside the relevant sample IGV session XMLs, The Tracktable Experiment Reports (named by SampleName) and the sample information file. The function also returns the XML doc to allow the user to add further customisation to the main report.
 
-Since \texttt{tracktables} uses relative paths to communicate with IGV, in practice the creation of Tracktable's reports in a new directory, alongside any files to display, is advised. This allows for the report to be high portable and so delivered to the user as a functional unit to use with IGV.
+Since \texttt{tracktables} uses relative paths to communicate with IGV, in practice the creation of \texttt{tracktable}'s reports in a new directory, alongside any files to display, is advised. This allows for the report to be high portable and so delivered to the user as a functional unit to use with IGV.
 
 \end{document}

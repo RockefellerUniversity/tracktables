@@ -14,6 +14,9 @@ First column must contain unique sample ids.}
 
 \item{igvdirectory}{A character of the directory to which sample metadata file is written.}
 }
+\value{
+A character of file location for the IGV sample information file.
+}
 \description{
 Creates sample metadata file for IGV from a Samplesheet of metadata and FileSheet of file locations.
 }

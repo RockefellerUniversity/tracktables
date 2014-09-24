@@ -18,6 +18,9 @@ MakeIGVSessionXML(fileSheet, igvdirectory, XMLname, genomeName,
 
 \item{locusName}{A character of locus to display in igv on loading (See IGV user guide for details)}
 }
+\value{
+A character of file location for the IGV session XML
+}
 \description{
 Creates session XML for IGV from a FileSheet of file locations.
 }

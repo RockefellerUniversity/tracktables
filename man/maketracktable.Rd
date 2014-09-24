@@ -17,6 +17,9 @@ maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome)
 
 \item{genome}{Character of genome for IGV (See IGV user guide for details)}
 }
+\value{
+An object containing XML document (HTMLInternalDocument,XMLInternalDocument,XMLAbstractDocument)
+}
 \description{
 Creates HTML table of sample metadata and all required files for interacting with IGV.
 }
@@ -45,7 +48,7 @@ SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
 
 colnames(SampleSheet) <- c("SampleName","Antibody","Species")
   HTMLreport <- maketracktable(fileSheet,SampleSheet,
-                               "IGV_Example",
+                               "IGV_Example.html",
                                basedirectory=getwd(),
                                "mm9")
 }

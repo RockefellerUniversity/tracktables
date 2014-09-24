@@ -13,17 +13,15 @@ makebedtable(grangesObject, name, basedirectory)
 
 \item{basedirectory}{Character of the directory to which HTML report is writen.}
 }
+\value{
+A character of file location for the Tracktables HTML Report
+}
 \description{
 Creates HTML pages for interval files or GRanges (Tracktables Interval Report).
 }
 \examples{
-fileLocations <- system.file("extdata",package="tracktables")
-
-bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
-
-intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
-intervalGRanges <- tracktables:::GetGRanges(intervals[1])
-htmlpage <- makebedtable(intervalGRanges,"EBF_PeaksTable.html",getwd())
+data(Intervals)
+htmlpage <- makebedtable(Intervals,"EBF_PeaksTable.html",getwd())
 }
 \author{
 Thomas Carroll

@@ -21,6 +21,9 @@ First column must contain unique sample ids.}
 
 \item{locusName}{A character of locus to display in igv on loading (See IGV user guide for details)}
 }
+\value{
+A character of file location for the IGV session XML
+}
 \description{
 #' Creates IGV session XML and sample information file from a Samplesheet of metadata and FileSheet of file locations.
 }
