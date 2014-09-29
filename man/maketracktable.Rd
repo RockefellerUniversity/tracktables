@@ -4,7 +4,8 @@
 \alias{maketracktable}
 \title{Make HTML pages for IGV sessions (Tracktables Experiment Report)}
 \usage{
-maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome)
+maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome,
+  colourBy = NULL, bwScale = "autoscale")
 }
 \arguments{
 \item{fileSheet}{A data frame containing sample file locations (e.g. BigWig locations).}

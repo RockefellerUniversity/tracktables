@@ -14,8 +14,8 @@
 #' @param fileSheet A data.frame of file locations. First column must contain the unique sample ids.
 #' @param igvdirectory A character of the directory to which sample metadata file is written.
 #' @return A character of file location for the IGV sample information file.
-#' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML
-#' @include igvtrackhubs.r
+#' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML RColorBrewer
+#' @include tracktablesFunctions.r
 #' @examples
 #' 
 #' fileLocations <- system.file("extdata",package="tracktables")
@@ -104,7 +104,7 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' MakeIGVSessionXML(fileSheet,igvdirectory=getwd(),"Example","mm9")
 #' 
 #' @export
-MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All"){
+MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",coloursForGroups=NULL,bwScale="autoscale"){
     i <- 1
     SampleSheet <- as.matrix(fileSheet)
     Output <- file.path(igvdirectory,paste(XMLname,".xml",sep=""))
@@ -117,6 +117,11 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
     intervalFiles <- SampleSheet[,"interval"]    
     resources <- vector("list")
     for(i in 1:nrow(SampleSheet)){
+        if(!is.null(coloursForGroups)){
+            colourIGV <- coloursForGroups[i]
+        }else{
+            colourIGV <- "0,0,178" 
+        }
         if(!is.na(SampleSheet[i,"bam"])){
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bam",sep="")
             resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(bamFiles[i],Output),relativePath=TRUE))))
@@ -125,13 +130,30 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
         if(!is.na(SampleSheet[i,"interval"])){
             NewName <- paste(SampleSheet[i,"SampleName"],"_Interval",sep="")
             resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(intervalFiles[i],Output),relativePath=TRUE))))
-            TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",color="0,0,178",displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",height="45",id=relativePath(intervalFiles[i],Output),name=NewName,renderer="BASIC_FEATURE",showDataRange="true",sortable="false",visible="true",windowFunction="count"),parent=PanelDataNode)
+            TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",height="45",id=relativePath(intervalFiles[i],Output),name=NewName,renderer="BASIC_FEATURE",showDataRange="true",sortable="false",visible="true",windowFunction="count"),parent=PanelDataNode)
         }
         if(!is.na(SampleSheet[i,"bigwig"])){
+            
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bigwig",sep="")
             resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(bigwigFiles[i],Output),relativePath=TRUE))))
-            TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoscale="true",color="0,0,178",displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
-            DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)
+            
+            if(length(bwScale) == length(SampleSheet[i,"bigwig"])
+               & length(bwScale)[[i]] == 2 
+               ){
+                    scaleBigWigIGV <- bwScale[[i]]
+                    TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
+                    DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum=scaleBigWigIGV[2],minimum=scaleBigWigIGV[1],type="LINEAR"),parent=TrackNode)
+                    
+            } else if(bwScale == "autoscale"){
+                TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="true",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
+                DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)
+                
+            }else{
+                TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
+                DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)                
+            }
+            
+            
         }
     }  
     saveXML(GlobalNode,file=Output)
@@ -188,19 +210,25 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #'                                "mm9")
 #' 
 #' @export
-maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
-    message("tracktables uses the Datatables javascript libraries. For informat
-            ion on Datatables see http://datatables.net/")
+maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,colourBy=NULL,bwScale="autoscale"){
+    message("tracktables uses the Datatables javascript libraries.
+            For information on Datatables see http://datatables.net/")
 
     basedirectory <- gsub("/$","",basedirectory)
     MakeIGVSampleMetadata(SampleSheet,fileSheet,basedirectory)
+    if(!is.null(colourBy)){
+        nOfGroups <- length(unique(SampleSheet[,colourBy]))
+        groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
+    }else{
+        groupColours <- rep("0,0,178",nrow(SampleSheet))
+    }
     
     xmlFiles <- unlist(lapply(seq(1,nrow(fileSheet)),function(x)
         MakeIGVSessionXML(fileSheet[x,,drop=FALSE],
                           basedirectory,
                           paste0(fileSheet[x,1],"igv"),
                           genome,
-                          locusName="All")
+                          locusName="All",groupColours[x],bwScale)
         ))
   
     dataTableJS <- readLines(system.file(package="tracktables","js","datatables.js"))
@@ -208,7 +236,8 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome){
     dataTableCSS <- readLines(system.file(package="tracktables","js","jquery.datatables.css"))
     dataTableScroller <- readLines(system.file(package="tracktables","js","dataTables.scroller.min.js"))
     tracktablesCSS <- readLines(system.file(package="tracktables","js","tracktables.css"))
-  
+
+    
     giHTMLs <- vector("character",nrow(fileSheet))
     giHTMLLinks <- vector("character",nrow(fileSheet))
     for(l in 1:nrow(fileSheet)){
@@ -447,7 +476,7 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
     }
   }else{
     if(class(LoadFile) == "character"){
-      RangesTable <- read.delim(LoadFile,sep=sepr,header=TRUE,comment.char="#")
+      RangesTable <- read.delim(LoadFile,sep=sepr,header=FALSE,comment.char="#")
     }else if(class(LoadFile) == "matrix"){
       RangesTable <- as.data.frame(LoadFile)
     } else{
@@ -540,5 +569,5 @@ MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName
 #' @keywords datasets
 #' @name Intervals
 #' @usage data(Intervals)
-#' @format A GRanges object with two rows
+#' @return A GRanges object with two rows
 NULL

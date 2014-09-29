@@ -3,9 +3,11 @@
 \name{Intervals}
 \alias{Intervals}
 \title{Example genomic intervals}
-\format{A GRanges object with two rows}
 \usage{
 data(Intervals)
+}
+\value{
+A GRanges object with two rows
 }
 \description{
 This dataset contains peaks from an in-house EBF1 ChIP-seq

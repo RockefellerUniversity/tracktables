@@ -5,7 +5,7 @@
 \title{Make IGV session XML}
 \usage{
 MakeIGVSessionXML(fileSheet, igvdirectory, XMLname, genomeName,
-  locusName = "All")
+  locusName = "All", coloursForGroups = NULL, bwScale = "autoscale")
 }
 \arguments{
 \item{fileSheet}{A data.frame of file locations. First column must contain the unique sample ids.}
