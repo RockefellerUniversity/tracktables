@@ -80,6 +80,10 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' @param XMLname A character of the name for IGV session xml
 #' @param genomeName A character of genome for IGV (See IGV user guide for details)
 #' @param locusName A character of locus to display in igv on loading (See IGV user guide for details)
+#' @param colourBy Character vector of RGB colours to use for colouring displayed BigWigs
+#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
+#' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return A character of file location for the IGV session XML 
 #' @examples
 #'  
@@ -104,7 +108,7 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' MakeIGVSessionXML(fileSheet,igvdirectory=getwd(),"Example","mm9")
 #' 
 #' @export
-MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",coloursForGroups=NULL,bwScale="autoscale"){
+MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,bwScale="autoscale"){
     i <- 1
     SampleSheet <- as.matrix(fileSheet)
     Output <- file.path(igvdirectory,paste(XMLname,".xml",sep=""))
@@ -116,9 +120,12 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
     bigwigFiles <- SampleSheet[,"bigwig"]
     intervalFiles <- SampleSheet[,"interval"]    
     resources <- vector("list")
+    if(length(bwScale) == 1){
+      bwScale <- rep(bwScale,nrow(SampleSheet))
+    }    
     for(i in 1:nrow(SampleSheet)){
-        if(!is.null(coloursForGroups)){
-            colourIGV <- coloursForGroups[i]
+        if(!is.null(colourBy)){
+            colourIGV <- colourBy[i]
         }else{
             colourIGV <- "0,0,178" 
         }
@@ -137,18 +144,17 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bigwig",sep="")
             resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(bigwigFiles[i],Output),relativePath=TRUE))))
             
-            if(length(bwScale) == length(SampleSheet[i,"bigwig"])
-               & length(bwScale)[[i]] == 2 
-               ){
+            if(class(bwScale) == "list"){
                     scaleBigWigIGV <- bwScale[[i]]
                     TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
-                    DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum=scaleBigWigIGV[2],minimum=scaleBigWigIGV[1],type="LINEAR"),parent=TrackNode)
-                    
-            } else if(bwScale == "autoscale"){
+                    DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum=scaleBigWigIGV[2],minimum=scaleBigWigIGV[1],type="LINEAR"),parent=TrackNode)     
+            }
+            if(bwScale[i] == "autoscale"){
                 TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="true",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
                 DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)
                 
-            }else{
+            }
+            if(class(bwScale) != "list" & bwScale[i] != "autoscale"){
                 TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
                 DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)                
             }
@@ -178,6 +184,10 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #' @param filename Character of name for tracktables HTML report. (.html prefix is added automatically)
 #' @param basedirectory Character of directory for tracktables HTML report, IGV sessions and any interval files 
 #' @param genome Character of genome for IGV (See IGV user guide for details)
+#' @param colourBy Character defining which sample metadata to be used for colouring bigwig files
+#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
+#' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return An object containing XML document (HTMLInternalDocument,XMLInternalDocument,XMLAbstractDocument) 
 #' @examples
 #'  
@@ -222,13 +232,15 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     }else{
         groupColours <- rep("0,0,178",nrow(SampleSheet))
     }
-    
+    if(length(bwScale) == 1){
+      bwScale <- rep(bwScale,nrow(SampleSheet))
+    }
     xmlFiles <- unlist(lapply(seq(1,nrow(fileSheet)),function(x)
         MakeIGVSessionXML(fileSheet[x,,drop=FALSE],
                           basedirectory,
                           paste0(fileSheet[x,1],"igv"),
                           genome,
-                          locusName="All",groupColours[x],bwScale)
+                          locusName="All",groupColours[x],bwScale[x])
         ))
   
     dataTableJS <- readLines(system.file(package="tracktables","js","datatables.js"))
@@ -522,6 +534,10 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' @param XMLname A character of the name for IGV session xml
 #' @param genomeName A character of genome for IGV (See IGV user guide for details)
 #' @param locusName A character of locus to display in igv on loading (See IGV user guide for details)
+#' @param colourBy Character defining which sample metadata to be used for colouring bigwig files
+#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
+#' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return A character of file location for the IGV session XML
 #' @examples
 #'  
@@ -551,9 +567,16 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' MakeIGVSession(SampleSheet,fileSheet,igvdirectory=getwd(),"Example","mm9")
 #' 
 #' @export
-MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All"){
+MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,bwScale="autoscale"){
+  if(!is.null(colourBy)){
+    nOfGroups <- length(unique(SampleSheet[,colourBy]))
+    groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
+  }else{
+    groupColours <- rep("0,0,178",nrow(SampleSheet))
+  }
+  
   MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory)
-  sessionxml <- MakeIGVSessionXML(fileSheet,igvdirectory,XMLname,genomeName,locusName="All")  
+  sessionxml <- MakeIGVSessionXML(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=groupColours,bwScale=bwScale)  
   return(sessionxml)
 }
 

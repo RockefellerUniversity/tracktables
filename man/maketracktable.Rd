@@ -17,6 +17,12 @@ maketracktable(fileSheet, SampleSheet, filename, basedirectory, genome,
 \item{basedirectory}{Character of directory for tracktables HTML report, IGV sessions and any interval files}
 
 \item{genome}{Character of genome for IGV (See IGV user guide for details)}
+
+\item{colourBy}{Character defining which sample metadata to be used for colouring bigwig files}
+
+\item{bwScale}{Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum
+and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.}
 }
 \value{
 An object containing XML document (HTMLInternalDocument,XMLInternalDocument,XMLAbstractDocument)

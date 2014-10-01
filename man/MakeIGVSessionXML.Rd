@@ -5,7 +5,7 @@
 \title{Make IGV session XML}
 \usage{
 MakeIGVSessionXML(fileSheet, igvdirectory, XMLname, genomeName,
-  locusName = "All", coloursForGroups = NULL, bwScale = "autoscale")
+  locusName = "All", colourBy = NULL, bwScale = "autoscale")
 }
 \arguments{
 \item{fileSheet}{A data.frame of file locations. First column must contain the unique sample ids.}
@@ -17,6 +17,12 @@ MakeIGVSessionXML(fileSheet, igvdirectory, XMLname, genomeName,
 \item{genomeName}{A character of genome for IGV (See IGV user guide for details)}
 
 \item{locusName}{A character of locus to display in igv on loading (See IGV user guide for details)}
+
+\item{colourBy}{Character vector of RGB colours to use for colouring displayed BigWigs}
+
+\item{bwScale}{Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum
+and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.}
 }
 \value{
 A character of file location for the IGV session XML
