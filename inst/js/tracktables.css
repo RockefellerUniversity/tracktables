@@ -21,3 +21,9 @@ h2{
 	/*!border-left-color: rgb(33,103,126);
 	/*!background-color:rgb(208,201,194); !*/
 }
+a.table:link {color:rgb(0,105,131);text-decoration:none;font-size:130%}
+a.table:visited {color:rgb(0,105,131);text-decoration:none;font-size:130%}
+a.table:hover {color:rgb(131,0,81);text-decoration:none;font-size:150%}
+
+a.main:link {color:rgb(0,105,131);text-decoration:none;font-size:150%;}
+a.main:hover {color:rgb(131,0,81);text-decoration:none;font-size:170%;}

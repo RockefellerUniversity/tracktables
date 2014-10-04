@@ -255,7 +255,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     for(l in 1:nrow(fileSheet)){
         if(!is.na(fileSheet[l,"interval"])){
             giHTMLs[l] <- makebedtable(GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),basedirectory)  
-            giHTMLLinks[l] <- paste0("\"<a href=\\\"",file.path(basedirectory,basename(giHTMLs[l])),"\\\">Intervals</a>\"")
+            giHTMLLinks[l] <- paste0("\"<a class=\\\"table\\\" href=\\\"",file.path(basedirectory,basename(giHTMLs[l])),"\\\">Intervals</a>\"")
     }else{
         giHTMLLinks[l] <- shQuote("No Intervals")
       
@@ -265,7 +265,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   files <- unlist(lapply(xmlFiles,function(x)relativePath(x,
                                                           gsub("//","/",file.path(basedirectory,filename))
   )))
-  t3mp <- "\"<a href=\\\"http://localhost:60151/load?file=\".concat(dir.concat(\"/"
+  t3mp <- "\"<a class=\\\"table\\\" href=\\\"http://localhost:60151/load?file=\".concat(dir.concat(\"/"
   t4mp <- "\\\"\".concat(\""
   t5mp <- "</a>\")))"
   jsMat <- cbind(
@@ -287,7 +287,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     $('#example').dataTable( {
     \"data\": igvtable,\ncolumns:",
     paste0("[",paste0(
-      unlist(lapply(c(colnames(SampleSheet),"IGV","Intervals"),function(x)paste0(
+      unlist(lapply(c(colnames(SampleSheet),"IGV_Link","Intervals"),function(x)paste0(
         c("{\"title\"",paste0(
           "\"",
           x,"\"}")
@@ -343,7 +343,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
                    parent=divtttext)
   ul1 <- newXMLNode("ul","",
                    parent=divtttext)
-  li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this webstart.",
+  li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this <a class=\"main\" href=\"http://www.broadinstitute.org/igv/projects/current/igv.php\">webstart</a>.",
                     parent=ul1,cdata=TRUE)
   li2 <- newXMLNode("li","To load coverage, BAM and/or interval files (bed, narrow peak format etc) simply click the respective sample link in the IGV column.",
                     parent=ul1)
@@ -389,7 +389,7 @@ makebedtable <- function(grangesObject,name,basedirectory){
   
   grangesFrame <- as.matrix(as.data.frame(grangesObject))
   grangesFrame <- str_trim(grangesFrame)
-  jsarray <- paste("[",paste0("[",apply(grangesFrame,1,function(x)paste0(c(shQuote(c(paste0("<a href=\"http://localhost:60151/goto?locus=",x[1],":",x[2],"-",x[3],"\">IGV</a>"))),shQuote(x)),collapse=",")),"]",collapse=",\n"),"]")
+  jsarray <- paste("[",paste0("[",apply(grangesFrame,1,function(x)paste0(c(shQuote(c(paste0("<a class=\"table\" href=\"http://localhost:60151/goto?locus=",x[1],":",x[2],"-",x[3],"\">IGV</a>"))),shQuote(x)),collapse=",")),"]",collapse=",\n"),"]")
   jsArrayForIGV <- paste0("var igvtable =",jsarray,";\n")
   jspart2 <- paste0(
     "$(document).ready(function() {
@@ -463,7 +463,7 @@ makebedtable <- function(grangesObject,name,basedirectory){
                    parent=divtttext)
   ul1 <- newXMLNode("ul","",
                     parent=divtttext)
-  li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this webstart.",
+  li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this <a class=\"main\" href=\"http://www.broadinstitute.org/igv/projects/current/igv.php\">webstart</a>.",
                     parent=ul1,cdata=TRUE)
   li2 <- newXMLNode("li","To change IGV display to the region of interest, simply click the respective Interval link in the IGV column.",
                     parent=ul1)
