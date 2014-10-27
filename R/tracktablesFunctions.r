@@ -14,8 +14,8 @@
 #' @param fileSheet A data.frame of file locations. First column must contain the unique sample ids.
 #' @param igvdirectory A character of the directory to which sample metadata file is written.
 #' @return A character of file location for the IGV sample information file.
-#' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML RColorBrewer
-#' @include tracktablesFunctions.r
+#' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML RColorBrewer methods
+#' @include tracktablesFunctions.R
 #' @examples
 #' 
 #' fileLocations <- system.file("extdata",package="tracktables")
@@ -81,7 +81,7 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' @param genomeName A character of genome for IGV (See IGV user guide for details)
 #' @param locusName A character of locus to display in igv on loading (See IGV user guide for details)
 #' @param colourBy Character vector of RGB colours to use for colouring displayed BigWigs
-#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return A character of file location for the IGV session XML 
@@ -108,58 +108,158 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' MakeIGVSessionXML(fileSheet,igvdirectory=getwd(),"Example","mm9")
 #' 
 #' @export
-MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,bwScale="autoscale"){
+MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",
+                              colourBy=NULL,igvParams=igvParam(),writedirectory=NULL,
+                              full.xml.paths=FALSE,full.file.paths=FALSE,use.path.asis=FALSE){
     i <- 1
+    if(is.null(writedirectory)){
+      writedirectory <- igvdirectory
+    }
     SampleSheet <- as.matrix(fileSheet)
-    Output <- file.path(igvdirectory,paste(XMLname,".xml",sep=""))
+    if(class(igvParams) == "igvParam"){
+      igvParams <- rep(list(igvParams),nrow(fileSheet))
+    }
+    if(!full.xml.paths){
+      Output <- file.path(writedirectory,paste(XMLname,".xml",sep=""))
+    }else{
+      Output <- file.path(writedirectory,paste(XMLname,".xml",sep=""))
+    }
     GlobalNode <- newXMLNode("Global",attrs=c(genome.value=genomeName,groupTracksBy="Linking_id",locus=locusName,version=3))
     ResourcesNode <- newXMLNode("Resources",parent=GlobalNode)
-    MetaDataNode <- newXMLNode("Resource",parent=ResourcesNode,attrs=c(name="SampleMetadata",path=relativePath(file.path(igvdirectory,"SampleMetadata.txt"),Output),relativePath=TRUE))
+    if(full.xml.paths){
+      sampleMetadataPath <- file.path(igvdirectory,"SampleMetadata.txt")
+      relativePathSampleMetadataFlag <- "FALSE"
+    }else{      
+      sampleMetadataPath <- relativePath(file.path(igvdirectory,"SampleMetadata.txt"),Output)
+      relativePathSampleMetadataFlag <- "TRUE"
+      if(full.file.paths){
+        sampleMetadataPath <- relativePath(file.path(writedirectory,"SampleMetadata.txt"),Output)  
+      }
+    }
+    MetaDataNode <- newXMLNode("Resource",parent=ResourcesNode,attrs=c(name="SampleMetadata",path=sampleMetadataPath,relativePath=relativePathSampleMetadataFlag))
     PanelDataNode <- newXMLNode("Panel",attrs=c(height="350",name="DataPanel",width="1115"),parent=GlobalNode)
     bamFiles <- SampleSheet[,"bam"]
     bigwigFiles <- SampleSheet[,"bigwig"]
     intervalFiles <- SampleSheet[,"interval"]    
     resources <- vector("list")
-    if(length(bwScale) == 1){
-      bwScale <- rep(bwScale,nrow(SampleSheet))
-    }    
     for(i in 1:nrow(SampleSheet)){
         if(!is.null(colourBy)){
-            colourIGV <- colourBy[i]
+            colourIGVbam <- colourBy[i]
+            colourIGVbigWig <- colourBy[i]
+            colourIGVinterval <- colourBy[i]
         }else{
-            colourIGV <- "0,0,178" 
+            #print(paste0(col2rgb(igvParams[[i]]@bigwig.color),collapse=","))
+            colourIGVbam <- paste0(col2rgb(igvParams[[i]]@bam.color),collapse=",")
+            colourIGVbigWig <- paste0(col2rgb(igvParams[[i]]@bigwig.color),collapse=",")
+            colourIGVinterval <- paste0(col2rgb(igvParams[[i]]@interval.color),collapse=",")              
         }
         if(!is.na(SampleSheet[i,"bam"])){
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bam",sep="")
-            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(bamFiles[i],Output),relativePath=TRUE))))
-            TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",color="0,0,178",colorOption="UNEXPECTED_PAIR",displayMode="EXPANDED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bamFiles[i],Output),name=NewName,showDataRange="true",sortByTag="",visible="true"),parent=PanelDataNode)
+            if(full.file.paths){
+              bamFilePath <-  file.path(igvdirectory,basename(unname(bamFiles[i])))
+              relativePathBamFlag <- FALSE
+            }else{
+              bamFilePath <- relativePath(bamFiles[i],Output)
+              relativePathBamFlag <- TRUE
+            }
+            if(use.path.asis){
+              bamFilePath <- unname(bamFiles[i])
+              relativePathBamFlag <- FALSE              
+            }            
+            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=bamFilePath,relativePath=relativePathBamFlag))))
+            TrackNode <-  newXMLNode("Track",attrs=c(id=bamFilePath,
+                                                     name=NewName,
+                                                     showDataRange="true",
+                                                     color=colourIGVbam,
+                                                     altColor=paste0(col2rgb(igvParams[[i]]@bam.altColor),collapse=","),
+                                                     colorOption=igvParams[[i]]@bam.colorOption,
+                                                     displayMode=igvParams[[i]]@bam.displayMode,                                                     
+                                                     featureVisibilityWindow=as.character(igvParams[[i]]@bam.featureVisibilityWindow),
+                                                     fontSize=as.character(igvParams[[i]]@bam.fontSize),                                                     
+                                                     autoScale=igvParams[[i]]@bam.autoScale,
+                                                     showSpliceJunctions=igvParams[[i]]@bam.showSpliceJunctions,
+                                                     flagUnmappedPairs=igvParams[[i]]@bam.flagUnmappedPairs,
+                                                     colorByTag=igvParams[[i]]@bam.colorByTag,
+                                                     groupByTag=igvParams[[i]]@bam.groupByTag,
+                                                     sortByTag=igvParams[[i]]@bam.sortByTag,
+                                                     minInsertSize=igvParams[[i]]@bam.minInsertSize,
+                                                     maxInsertSize=igvParams[[i]]@bam.maxInsertSize,
+                                                     shadeBasesOption=igvParams[[i]]@bam.shadeBasesOption,
+                                                     shadeCenters=igvParams[[i]]@bam.shadeCenters,
+                                                     showAllBases=igvParams[[i]]@bam.showAllBases,
+                                                     visible="true"),
+                                     parent=PanelDataNode)
         }
         if(!is.na(SampleSheet[i,"interval"])){
             NewName <- paste(SampleSheet[i,"SampleName"],"_Interval",sep="")
-            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(intervalFiles[i],Output),relativePath=TRUE))))
-            TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",height="45",id=relativePath(intervalFiles[i],Output),name=NewName,renderer="BASIC_FEATURE",showDataRange="true",sortable="false",visible="true",windowFunction="count"),parent=PanelDataNode)
+            if(full.file.paths){
+              intervalFilePath <- file.path(igvdirectory,basename(unname(intervalFiles[i])))
+              relativePathIntervalFlag <- FALSE
+            }else{
+              intervalFilePath <- relativePath(intervalFiles[i],Output)
+              relativePathIntervalFlag <- TRUE
+            }
+            if(use.path.asis){
+              intervalFilePath <- unname(intervalFiles[i])
+              relativePathIntervalFlag <- FALSE              
+            }
+            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=intervalFilePath,relativePath=relativePathIntervalFlag))))
+            TrackNode <-  newXMLNode("Track",
+                                     attrs=c(id=intervalFilePath,
+                                             name=NewName,
+                                             altColor=paste0(col2rgb(igvParams[[i]]@interval.altColor),collapse=","),
+                                             color=colourIGVinterval,
+                                             displayMode=igvParams[[i]]@interval.displayMode,
+                                             featureVisibilityWindow=as.character(igvParams[[i]]@interval.featureVisibilityWindow),
+                                             fontSize=as.character(igvParams[[i]]@interval.fontSize),
+                                             height=as.character(igvParams[[i]]@interval.height),
+                                             renderer=igvParams[[i]]@interval.renderer,
+                                             showDataRange="true",
+                                             sortable=igvParams[[i]]@interval.sortable,
+                                             visible=igvParams[[i]]@interval.visible,
+                                             windowFunction=igvParams[[i]]@interval.windowFunction,
+                                             autoScale=igvParams[[i]]@interval.autoScale,
+                                             normalize=igvParams[[i]]@interval.normalize                                             
+                                             ),
+                                     parent=PanelDataNode)
         }
         if(!is.na(SampleSheet[i,"bigwig"])){
             
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bigwig",sep="")
-            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=relativePath(bigwigFiles[i],Output),relativePath=TRUE))))
-            
-            if(class(bwScale) == "list"){
-                    scaleBigWigIGV <- bwScale[[i]]
-                    TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
-                    DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum=scaleBigWigIGV[2],minimum=scaleBigWigIGV[1],type="LINEAR"),parent=TrackNode)     
+            if(full.file.paths){
+              bigWigFilePath <- file.path(igvdirectory,basename(unname(bigwigFiles[i])))
+              relativePathbigWigFlag <- FALSE
+            }else{
+              bigWigFilePath <- relativePath(bigwigFiles[i],Output)
+              relativePathbigWigFlag <- TRUE
             }
-            if(bwScale[i] == "autoscale"){
-                TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="true",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
-                DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)
-                
-            }
-            if(class(bwScale) != "list" & bwScale[i] != "autoscale"){
-                TrackNode <-  newXMLNode("Track",attrs=c(altColor="0,0,178",autoScale="false",color=colourIGV,displayMode="COLLAPSED",featureVisibilityWindow="-1",fontSize="10",id=relativePath(bigwigFiles[i],Output),name=NewName,renderer="BAR_CHART",showDataRange="true",visible="true",windowFunction="mean"),parent=PanelDataNode)
-                DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline="0.0",drawBaseline="true",flipAxis="false",maximum="50",minimum="5",type="LINEAR"),parent=TrackNode)                
-            }
-            
-            
+            if(use.path.asis){
+              bigWigFilePath <- unname(bigwigFiles[i])
+              relativePathbigWigFlag <- FALSE              
+            }             
+            resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=bigWigFilePath,relativePath=relativePathbigWigFlag))))
+            TrackNode <-  newXMLNode("Track",attrs=c(id=bigWigFilePath,
+                                                     name=NewName,
+                                                     autoScale=igvParams[[i]]@bigwig.autoScale,
+                                                     altColor=paste0(col2rgb(igvParams[[i]]@bigwig.altColor),collapse=","),
+                                                     color=colourIGVbigWig,
+                                                     displayMode=igvParams[[i]]@bigwig.displayMode,
+                                                     featureVisibilityWindow=as.character(igvParams[[i]]@bigwig.featureVisibilityWindow),
+                                                     fontSize=as.character(igvParams[[i]]@bigwig.fontSize),
+                                                     renderer=igvParams[[i]]@bigwig.renderer,
+                                                     showDataRange="true",
+                                                     visible=igvParams[[i]]@bigwig.visible,
+                                                     sortable=igvParams[[i]]@bigwig.sortable,
+                                                     normalize=igvParams[[i]]@bigwig.normalize,
+                                                     windowFunction=igvParams[[i]]@bigwig.windowFunction),
+                                     parent=PanelDataNode)
+            DisplayRangeNode <-  newXMLNode("DataRange",attrs=c(baseline=igvParams[[i]]@bigwig.baseline,
+                                                                drawBaseline=igvParams[[i]]@bigwig.drawBaseline,
+                                                                flipAxis=igvParams[[i]]@bigwig.flipAxis,
+                                                                maximum=igvParams[[i]]@bigwig.maximum,
+                                                                minimum=igvParams[[i]]@bigwig.minimum,
+                                                                type=igvParams[[i]]@bigwig.type),
+                                            parent=TrackNode)                           
         }
     }  
     saveXML(GlobalNode,file=Output)
@@ -185,7 +285,7 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #' @param basedirectory Character of directory for tracktables HTML report, IGV sessions and any interval files 
 #' @param genome Character of genome for IGV (See IGV user guide for details)
 #' @param colourBy Character defining which sample metadata to be used for colouring bigwig files
-#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return An object containing XML document (HTMLInternalDocument,XMLInternalDocument,XMLAbstractDocument) 
@@ -220,28 +320,46 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #'                                "mm9")
 #' 
 #' @export
-maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,colourBy=NULL,bwScale="autoscale"){
+maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,colourBy=NULL,
+                           igvParams=igvParam(),writedirectory=NULL,
+                           full.xml.paths=FALSE,full.file.paths=FALSE,use.path.asis=FALSE){
     message("tracktables uses the Datatables javascript libraries.
             For information on Datatables see http://datatables.net/")
-
+    if(class(igvParams) == "igvParam"){
+      igvParams <- rep(list(igvParams),nrow(fileSheet))
+    }
+    if(class(igvParams) == "list"){
+      if(length(igvParams) != nrow(fileSheet)){
+        igvParams <- igvParams[1]
+        message("igvParams is not the same length as fileSheet. Only first igvParams in list will be used")
+      }
+    }
+    
     basedirectory <- gsub("/$","",basedirectory)
-    MakeIGVSampleMetadata(SampleSheet,fileSheet,basedirectory)
+    if(is.null(writedirectory)) writedirectory <- basedirectory
+    
+    if(!full.xml.paths){
+      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory)
+    }else{
+      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory)
+    }
     if(!is.null(colourBy)){
         nOfGroups <- length(unique(SampleSheet[,colourBy]))
         groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
     }else{
-        groupColours <- rep("0,0,178",nrow(SampleSheet))
-    }
-    if(length(bwScale) == 1){
-      bwScale <- rep(bwScale,nrow(SampleSheet))
+        groupColours <- NULL
     }
     xmlFiles <- unlist(lapply(seq(1,nrow(fileSheet)),function(x)
         MakeIGVSessionXML(fileSheet[x,,drop=FALSE],
                           basedirectory,
                           paste0(fileSheet[x,1],"igv"),
                           genome,
-                          locusName="All",groupColours[x],bwScale[x])
+                          locusName="All",groupColours[x],igvParams[x],
+                          writedirectory=writedirectory,
+                          full.xml.paths=full.xml.paths,full.file.paths=full.file.paths,
+                          use.path.asis=use.path.asis)
         ))
+    print(xmlFiles)
   
     dataTableJS <- readLines(system.file(package="tracktables","js","datatables.js"))
     jqueryJS <- readLines(system.file(package="tracktables","js","jquery.min.js"))
@@ -249,30 +367,58 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     dataTableScroller <- readLines(system.file(package="tracktables","js","dataTables.scroller.min.js"))
     tracktablesCSS <- readLines(system.file(package="tracktables","js","tracktables.css"))
 
-    
+    print("hello")
     giHTMLs <- vector("character",nrow(fileSheet))
     giHTMLLinks <- vector("character",nrow(fileSheet))
     for(l in 1:nrow(fileSheet)){
         if(!is.na(fileSheet[l,"interval"])){
-            giHTMLs[l] <- makebedtable(GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),basedirectory)  
-            giHTMLLinks[l] <- paste0("\"<a class=\\\"table\\\" href=\\\"",file.path(basedirectory,basename(giHTMLs[l])),"\\\">Intervals</a>\"")
+            if(!full.xml.paths){
+            giHTMLs[l] <- makebedtable(GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),writedirectory)  
+            htmlfile <- unlist(lapply(giHTMLs[l],function(x)relativePath(x, gsub("//","/",file.path(writedirectory,filename)))))
+            giHTMLLinks[l] <- paste0("\"<a class=\\\"table\\\" href=\\\"",
+                                     htmlfile,
+                                     "\\\">Intervals</a>\"")
+            }else{
+              giHTMLs[l] <- makebedtable(GetGRanges(as.vector(fileSheet[l,"interval"])),paste0(fileSheet[l,"SampleName"],"GI.html"),writedirectory)  
+              giHTMLLinks[l] <- paste0("\"<a class=\\\"table\\\" href=\\\"",file.path(basedirectory,basename(giHTMLs[l])),"\\\">Intervals</a>\"") 
+            }
     }else{
         giHTMLLinks[l] <- shQuote("No Intervals")
       
     }
   }
-  
-  files <- unlist(lapply(xmlFiles,function(x)relativePath(x,
-                                                          gsub("//","/",file.path(basedirectory,filename))
-  )))
-  t3mp <- "\"<a class=\\\"table\\\" href=\\\"http://localhost:60151/load?file=\".concat(dir.concat(\"/"
-  t4mp <- "\\\"\".concat(\""
-  t5mp <- "</a>\")))"
-  jsMat <- cbind(
-    matrix(paste0("\"",as.vector(SampleSheet),"\""),ncol=ncol(SampleSheet),byrow=FALSE),
-    paste0(t3mp,files,"&merge=true",t4mp,">",SampleSheet[,1],t5mp),
-    giHTMLLinks
-  )
+  print("hello")
+  if(!full.xml.paths){
+    if(full.file.paths){
+      message(paste0("full.file.paths is set to true,\nrelative paths will be created to XML from writedirectory: ",writedirectory))
+    files <- unlist(lapply(xmlFiles,function(x)relativePath(x,
+                                                            gsub("//","/",file.path(writedirectory,filename)))))
+                                                              
+    }else{
+    files <- unlist(lapply(xmlFiles,function(x)relativePath(x,
+                                                            gsub("//","/",file.path(basedirectory,filename)))))
+    }                                                        
+    t3mp <- "\"<a class=\\\"table\\\" href=\\\"http://localhost:60151/load?file=\".concat(dir.concat(\"/"
+    t4mp <- "\\\"\".concat(\""
+    t5mp <- "</a>\")))"
+    jsMat <- cbind(
+      matrix(paste0("\"",as.vector(SampleSheet),"\""),ncol=ncol(SampleSheet),byrow=FALSE),
+      paste0(t3mp,files,"&merge=true",t4mp,">",SampleSheet[,1],t5mp),
+      giHTMLLinks
+    )
+  }else{
+    files <- unlist(xmlFiles)
+    files <- file.path(basedirectory,basename(files))
+    t3mp <- "\"<a class=\\\"table\\\" href=\\\"http://localhost:60151/load?file="
+    t4mp <- ""
+    t5mp <- "</a>\""
+    jsMat <- cbind(
+      matrix(paste0("\"",as.vector(SampleSheet),"\""),ncol=ncol(SampleSheet),byrow=FALSE),
+      paste0(t3mp,files,"&merge=true\\\"",t4mp,">",SampleSheet[,1],t5mp),
+      giHTMLLinks
+    )
+    
+  }
   setigv <- paste0("var igvtable = [",paste0(
     "[",apply(jsMat,1,function(x)paste0(
       x,collapse=","))
@@ -354,8 +500,11 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   div2 <- newXMLNode("div",
                      attrs=c(id="demo"),
                      parent=section)
-  saveXML(doc,file=file.path(basedirectory,filename),doctype="html")
-  return(doc)
+  if(!full.xml.paths){
+    saveXML(doc,file=file.path(writedirectory,filename),doctype="html")
+  }else{
+    saveXML(doc,file=file.path(writedirectory,filename),doctype="html")
+  }
 }
 
 #' Make HTML pages for interval files or GRanges.
@@ -535,7 +684,7 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' @param genomeName A character of genome for IGV (See IGV user guide for details)
 #' @param locusName A character of locus to display in igv on loading (See IGV user guide for details)
 #' @param colourBy Character defining which sample metadata to be used for colouring bigwig files
-#' @param bwScale Character or list of numeric vectors to define scaling type for bigwig. Default is "autoscale".
+#' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
 #' @return A character of file location for the IGV session XML
@@ -567,16 +716,18 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' MakeIGVSession(SampleSheet,fileSheet,igvdirectory=getwd(),"Example","mm9")
 #' 
 #' @export
-MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,bwScale="autoscale"){
+MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,
+                           igvParams=igvParam(),full.xml.paths=F,full.file.paths=F,
+                           use.path.asis=FALSE){
   if(!is.null(colourBy)){
     nOfGroups <- length(unique(SampleSheet[,colourBy]))
     groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
   }else{
-    groupColours <- rep("0,0,178",nrow(SampleSheet))
+    groupColours <- NULL
   }
   
   MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory)
-  sessionxml <- MakeIGVSessionXML(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=groupColours,bwScale=bwScale)  
+  sessionxml <- MakeIGVSessionXML(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=groupColours,igvParams=igvParams,full.xml.paths=full.xml.paths,full.file.paths=full.file.paths,use.path.asis=use.path.asis)  
   return(sessionxml)
 }
 
@@ -594,3 +745,260 @@ MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName
 #' @usage data(Intervals)
 #' @return A GRanges object with two rows
 NULL
+
+#' Parameters for displaying bigwigs, bams and intervals in IGV
+#'
+#' Use igvParam( object)) to create a parameter object to control IGV display invoked from maketracktable() report or 
+#' from makeIGVSession() XML files. Parameters for bigwig, bam and intervals files may be provided. See IGV manual for a full
+#' description of options.
+#'
+#' @docType class
+#' @rdname igvParam
+#' @aliases igvParam-class igvParam
+#' @author Thomas Carroll
+#' @param bigwig.altColor A character vector of alternate colour for bigwigs displayed in IGV.
+#' @param bigwig.color A character vector of main colour for bigwigs displayed in IGV.
+#' @param bigwig.displayMode A character vector of display mode for bigwigs displayed in IGV.
+#' @param bigwig.featureVisibilityWindow A numeric vector of feature visibility window for bigwigs displayed in IGV (Defaut -1).
+#' @param bigwig.fontSize A numeric vector of font size for bigwigs displayed in IGV.
+#' @param bigwig.autoScale A character vector ("true"/"false") to indicate whether data is autoscaled for bigwigs displayed in IGV (Default "true").
+#' @param bigwig.normalize A character vector ("true"/"false") to indicate whether data is normalised for bigwigs displayed in IGV (Default "false").
+#' @param bigwig.renderer A character vector of renderer for bigwigs displayed in IGV (Default "BAR_CHART").
+#' @param bigwig.sortable A character vector ("true"/"false") to indicate whether data is sortable for bigwigs displayed in IGV (Default "true").
+#' @param bigwig.visible A character vector ("true"/"false") to indicate whether data is visible for bigwigs displayed in IGV (Default "true").
+#' @param bigwig.windowFunction A character vector ("true"/"false") of window function for bigwigs displayed in IGV (Default "mean").
+#' @param bigwig.baseline  A numeric vector of baseline bigwigs displayed in IGV.
+#' @param bigwig.drawBaseline  A character vector ("true"/"false") of whether to draw baseline for bigwigs displayed in IGV (Default "true").
+#' @param bigwig.flipAxis  A character vector ("true"/"false") to indicate whether to flip axis for bigwigs displayed in IGV (Default "false").
+#' @param bigwig.maximum  A numeric vector of maximum value to display for bigwigs displayed in IGV (Default 50).
+#' @param bigwig.minimum A numeric vector of minimum value to display for bigwigs displayed in IGV (Default 0).
+#' @param bigwig.type A character vector of display type for bigwigs displayed in IGV (Default "LINEAR").
+#' @param interval.altColor  A character vector of alternate colour for intervals displayed in IGV. 
+#' @param interval.color  A character vector of main colour for intervals displayed in IGV.
+#' @param interval.autoScale A character vector ("true"/"false") to indicate whether data is autoscaled for intervals displayed in IGV (Default "false").
+#' @param interval.displayMode A character vector of display mode for intervals displayed in IGV (Default "COLLAPSED").                            
+#' @param interval.featureVisibilityWindow A numeric vector of feature visibility window for intervals displayed in IGV (Defaut -1).
+#' @param interval.fontSize  A numeric vector of font size for intervals displayed in IGV.
+#' @param interval.height  A numeric vector of height for intervals displayed in IGV.
+#' @param interval.normalize A character vector ("true"/"false") to indicate whether data is normalised for intervals displayed in IGV (Default "false").
+#' @param interval.renderer A character vector of renderer for intervals displayed in IGV (Default "BASIC_FEATURE").
+#' @param interval.sortable A character vector ("true"/"false") to indicate whether data is sortable for intervals displayed in IGV (Default "true").
+#' @param interval.visible A character vector ("true"/"false") to indicate whether data is visible for intervals displayed in IGV (Default "true").
+#' @param interval.windowFunction  A character vector ("true"/"false") of window function for intervals displayed in IGV (Default "count").
+#' @param bam.altColor A character vector of alternate colour for bam files displayed in IGV. 
+#' @param bam.color  A character vector of main colour for bam files displayed in IGV. 
+#' @param bam.autoScale A character vector ("true"/"false") to indicate whether data is autoscaled for bam files displayed in IGV (Default "false").
+#' @param bam.displayMode A character vector of display mode for bam files displayed in IGV (Default "EXPANDED").                           
+#' @param bam.featureVisibilityWindow  A numeric vector of feature visibility window for bam files displayed in IGV (Defaut -1).
+#' @param bam.fontSize A numeric vector of font size for intervals displayed in IGV.
+#' @param bam.showSpliceJunctions A character vector ("true"/"false") to indicate whether to show splice juntions for bam files displayed in IGV (Default "false").
+#' @param bam.colorByTag  A character vector to indicate whether to colour reads by Tags for Bam files (Defualt = "").
+#' @param bam.colorOption A character vector of option to highlight Tags for Bam files (Defualt = "UNEXPECTED_PAIR").
+#' @param bam.flagUnmappedPairs A character vector ("true"/"false") to indicate whether to flaf unmapped pairs for bam files displayed in IGV (Default "false").
+#' @param bam.groupByTag A character vector ("true"/"false") to indicate how to groups reads by Tag for bam files displayed in IGV (Default "").
+#' @param bam.maxInsertSize A numeric vector of maximum insert size to display for Bam files.
+#' @param bam.minInsertSize A numeric vector of minimum insert size to display for Bam files.
+#' @param bam.shadeBasesOption A character vector of option to shade bases for Bam files (Default "QUALITY").
+#' @param bam.shadeCenters A character vector ("true"/"false") to indicate whether to shade centres for bam files displayed in IGV (Default "false").
+#' @param bam.showAllBases A character vector ("true"/"false") to indicate to show all bases for bam files displayed in IGV (Default "false").
+#' @param bam.sortByTag A character vector ("true"/"false") to indicate how to sort reads by Tag for bam files displayed in IGV (Default "").
+#' @return An igvParam class object to use with maketracktable,MakeIGVSession and makeIGVSessionMXL
+#' @examples
+#' 
+#' ## Simple initialisation of an IGVParam object  
+#' igvDisplayParams <- igvParam()
+#' 
+#' 
+#' ## More custom initialisation of an IGVParam object .
+#' igvDisplayParams <- igvParam(bigwig.color="red",bigwig.autoScale = "false",
+#' bigwig.minimum = 10,bigwig.maximum = 100)
+#' 
+#' 
+#' # See full parameters and IGV online manual for more details on customistions  
+#'  
+#'  
+#' ## Use igvParams with maketracktables function to customise bigwig display colour and data range.
+#' fileLocations <- system.file("extdata",package="tracktables")
+#' 
+#' bigwigs <- dir(fileLocations,pattern="*.bw",full.names=TRUE)
+#' 
+#' intervals <- dir(fileLocations,pattern="*.bed",full.names=TRUE)
+#' 
+#' bigWigMat <- cbind(gsub("_Example.bw","",basename(bigwigs)),
+#'                    bigwigs)
+#' 
+#' intervalsMat <- cbind(gsub("_Peaks.bed","",basename(intervals)),
+#'                       intervals)
+#' 
+#' fileSheet <- merge(bigWigMat,intervalsMat,all=TRUE)
+#' 
+#' fileSheet <- as.matrix(cbind(fileSheet,NA))
+#' 
+#' colnames(fileSheet) <- c("SampleName","bigwig","interval","bam")
+#' 
+#' SampleSheet <- cbind(as.vector(fileSheet[,"SampleName"]),
+#'                      c("EBF","H3K4me3","H3K9ac","RNAPol2"),
+#'                      c("ProB","ProB","ProB","ProB"))
+#' 
+#' colnames(SampleSheet) <- c("SampleName","Antibody","Species")
+#' MakeIGVSession(SampleSheet,fileSheet,
+#' igvdirectory=getwd(),"Example","mm9",
+#' igvParams=igvDisplayParams)
+#' 
+igvParam <- setClass("igvParam",
+                     slots = c(bigwig.altColor="character", 
+                               bigwig.color="character",
+                               bigwig.autoScale="character",
+                               bigwig.displayMode="character",
+                               bigwig.featureVisibilityWindow="numeric",
+                               bigwig.fontSize="numeric",
+                               bigwig.normalize="character",
+                               bigwig.renderer="character",
+                               bigwig.sortable="character",
+                               bigwig.visible="character",
+                               bigwig.windowFunction="character",
+                               bigwig.baseline="numeric",
+                               bigwig.drawBaseline="character",
+                               bigwig.flipAxis="character",
+                               bigwig.maximum="numeric",
+                               bigwig.minimum="numeric",
+                               bigwig.type="character",
+                               
+                               interval.altColor="character", 
+                               interval.color="character",
+                               interval.autoScale="character",
+                               interval.displayMode="character",                            
+                               interval.featureVisibilityWindow="numeric",
+                               interval.fontSize="numeric",
+                               interval.height="numeric",
+                               interval.normalize="character",
+                               interval.renderer="character",
+                               interval.sortable="character",
+                               interval.visible="character",
+                               interval.windowFunction="character",
+                               
+                               bam.altColor="character", 
+                               bam.color="character",
+                               bam.autoScale="character",
+                               bam.displayMode="character",                            
+                               bam.featureVisibilityWindow="numeric",
+                               bam.fontSize="numeric",
+                               bam.showSpliceJunctions="character",
+                               bam.colorByTag="character",
+                               bam.colorOption="character",
+                               bam.flagUnmappedPairs="character",
+                               bam.groupByTag="character",
+                               bam.maxInsertSize="numeric",
+                               bam.minInsertSize="numeric",
+                               bam.shadeBasesOption="character",
+                               bam.shadeCenters="character",
+                               bam.showAllBases="character",
+                               bam.sortByTag="character"                            
+                     )
+)
+
+#' @rdname igvParam
+#' @export
+igvParam <- function(
+
+  bigwig.altColor="darkgrey", 
+  bigwig.color="darkgrey",
+  bigwig.autoScale="true",
+  bigwig.displayMode="COLLAPSED",
+  bigwig.featureVisibilityWindow=-1,
+  bigwig.fontSize=10,
+  bigwig.normalize="false",
+  bigwig.renderer="BAR_CHART",
+  bigwig.sortable="true",
+  bigwig.visible="true",
+  bigwig.windowFunction="mean",
+  bigwig.baseline=0.0,
+  bigwig.drawBaseline="true",
+  bigwig.flipAxis="false",
+  bigwig.maximum=50,
+  bigwig.minimum=0,
+  bigwig.type="LINEAR",
+  
+  interval.altColor="darkgrey", 
+  interval.color="darkgrey",
+  interval.autoScale="true",
+  interval.displayMode="character",                            
+  interval.featureVisibilityWindow=-1,
+  interval.fontSize=10,
+  interval.height=40,
+  interval.normalize="false",
+  interval.renderer="BASIC_FEATURE",
+  interval.sortable="true",
+  interval.visible="true",
+  interval.windowFunction="count",
+  
+  bam.altColor="darkgrey", 
+  bam.color="darkgrey",
+  bam.autoScale="true",
+  bam.displayMode="EXPANDED",                            
+  bam.featureVisibilityWindow=-1,
+  bam.fontSize=10,
+  bam.showSpliceJunctions="false",
+  bam.colorByTag="",
+  bam.colorOption="UNEXPECTED_PAIR",
+  bam.flagUnmappedPairs="false",
+  bam.groupByTag="",
+  bam.maxInsertSize=1000,
+  bam.minInsertSize=50,
+  bam.shadeBasesOption="QUALITY",
+  bam.shadeCenters="true",
+  bam.showAllBases="false",
+  bam.sortByTag=""){
+  
+  igvParamReturn <- new("igvParam",
+                        bigwig.altColor=bigwig.altColor,
+                        bigwig.color=bigwig.color,
+                        bigwig.autoScale=bigwig.autoScale,
+                        bigwig.displayMode=bigwig.displayMode,
+                        bigwig.featureVisibilityWindow=bigwig.featureVisibilityWindow,
+                        bigwig.fontSize=bigwig.fontSize,
+                        bigwig.normalize=bigwig.normalize,
+                        bigwig.renderer=bigwig.renderer,
+                        bigwig.sortable=bigwig.sortable,
+                        bigwig.visible=bigwig.visible,
+                        bigwig.windowFunction=bigwig.windowFunction,
+                        bigwig.baseline=bigwig.baseline,
+                        bigwig.drawBaseline=bigwig.drawBaseline,
+                        bigwig.flipAxis=bigwig.flipAxis,
+                        bigwig.maximum=bigwig.maximum,
+                        bigwig.minimum=bigwig.minimum,
+                        bigwig.type=bigwig.type,              
+                        interval.altColor=interval.altColor, 
+                        interval.color=interval.color,
+                        interval.autoScale=interval.autoScale,
+                        interval.displayMode=interval.displayMode,                            
+                        interval.featureVisibilityWindow=interval.featureVisibilityWindow,
+                        interval.fontSize=interval.fontSize,
+                        interval.height=interval.height,
+                        interval.normalize=interval.normalize,
+                        interval.renderer=interval.renderer,
+                        interval.sortable=interval.sortable,
+                        interval.visible=interval.visible,
+                        interval.windowFunction=interval.windowFunction,              
+                        bam.altColor=bam.altColor, 
+                        bam.color=bam.color,
+                        bam.autoScale=bam.autoScale,
+                        bam.displayMode=bam.displayMode,                            
+                        bam.featureVisibilityWindow=bam.featureVisibilityWindow,
+                        bam.fontSize=bam.fontSize,
+                        bam.showSpliceJunctions=bam.showSpliceJunctions,
+                        bam.colorByTag=bam.colorByTag,
+                        bam.colorOption=bam.colorOption,
+                        bam.flagUnmappedPairs=bam.flagUnmappedPairs,
+                        bam.groupByTag=bam.groupByTag,
+                        bam.maxInsertSize=bam.maxInsertSize,
+                        bam.minInsertSize=bam.minInsertSize,
+                        bam.shadeBasesOption=bam.shadeBasesOption,
+                        bam.shadeCenters=bam.shadeCenters,
+                        bam.sortByTag=bam.sortByTag)                                         
+  
+  
+  return(igvParamReturn)
+}
+
+
