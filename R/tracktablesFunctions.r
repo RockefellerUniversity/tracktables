@@ -84,6 +84,14 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
 #' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
+#' @param writedirectory A character of the directory to which files will be written. Default is set
+#' to igvdirectory argument. 
+#' @param full.xml.paths Boolean of whether reference to XML and sample information files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param full.file.paths Boolean of whether reference to sample bigWig/Bam/interval files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param use.path.asis Boolean of whether paths to files in samplesheet should be used as is. 
+#' If TRUE overrides sample files paths specified by full.file.paths argument. Default is FALSE
 #' @return A character of file location for the IGV session XML 
 #' @examples
 #'  
@@ -288,6 +296,14 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
+#' @param writedirectory A character of the directory to which files will be written. Default is set
+#' to igvdirectory argument. 
+#' @param full.xml.paths Boolean of whether reference to XML and sample information files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param full.file.paths Boolean of whether reference to sample bigWig/Bam/interval files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param use.path.asis Boolean of whether paths to files in samplesheet should be used as is. 
+#' If TRUE overrides sample files paths specified by full.file.paths argument. Default is FALSE
 #' @return An object containing XML document (HTMLInternalDocument,XMLInternalDocument,XMLAbstractDocument) 
 #' @examples
 #'  
@@ -687,6 +703,14 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' @param igvParams An object of class igvParam containing display parameters for IGV.
 #' When providing a list, this list must be same length as number of samples and each element have two numeric values corresponding to minimum 
 #' and maximum value to be used in setting data range. Currently only "autoscale" or a list of minimum and maximum values are accepted.
+#' @param writedirectory A character of the directory to which files will be written. Default is set
+#' to igvdirectory argument. 
+#' @param full.xml.paths Boolean of whether reference to XML and sample information files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param full.file.paths Boolean of whether reference to sample bigWig/Bam/interval files should 
+#' be by relative or absolute paths. Default is FALSE
+#' @param use.path.asis Boolean of whether paths to files in samplesheet should be used as is. 
+#' If TRUE overrides sample files paths specified by full.file.paths argument. Default is FALSE
 #' @return A character of file location for the IGV session XML
 #' @examples
 #'  
@@ -717,7 +741,7 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' 
 #' @export
 MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,
-                           igvParams=igvParam(),full.xml.paths=F,full.file.paths=F,
+                           igvParams=igvParam(),writedirectory=NULL,full.xml.paths=FALSE,full.file.paths=FALSE,
                            use.path.asis=FALSE){
   if(!is.null(colourBy)){
     nOfGroups <- length(unique(SampleSheet[,colourBy]))
