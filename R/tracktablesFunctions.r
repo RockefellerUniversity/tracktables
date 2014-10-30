@@ -339,7 +339,7 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,colourBy=NULL,
                            igvParams=igvParam(),writedirectory=NULL,
                            full.xml.paths=FALSE,full.file.paths=FALSE,use.path.asis=FALSE){
-    message("tracktables uses the Datatables javascript libraries.
+      message("tracktables uses the Datatables javascript libraries.
             For information on Datatables see http://datatables.net/")
     if(class(igvParams) == "igvParam"){
       igvParams <- rep(list(igvParams),nrow(fileSheet))
@@ -375,7 +375,6 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
                           full.xml.paths=full.xml.paths,full.file.paths=full.file.paths,
                           use.path.asis=use.path.asis)
         ))
-    print(xmlFiles)
   
     dataTableJS <- readLines(system.file(package="tracktables","js","datatables.js"))
     jqueryJS <- readLines(system.file(package="tracktables","js","jquery.min.js"))
@@ -383,7 +382,6 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     dataTableScroller <- readLines(system.file(package="tracktables","js","dataTables.scroller.min.js"))
     tracktablesCSS <- readLines(system.file(package="tracktables","js","tracktables.css"))
 
-    print("hello")
     giHTMLs <- vector("character",nrow(fileSheet))
     giHTMLLinks <- vector("character",nrow(fileSheet))
     for(l in 1:nrow(fileSheet)){
@@ -403,7 +401,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
       
     }
   }
-  print("hello")
+
   if(!full.xml.paths){
     if(full.file.paths){
       message(paste0("full.file.paths is set to true,\nrelative paths will be created to XML from writedirectory: ",writedirectory))
@@ -521,6 +519,48 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   }else{
     saveXML(doc,file=file.path(writedirectory,filename),doctype="html")
   }
+  newdoc <- newXMLDoc(isHTML = T)
+  html <- newXMLNode("html",parent=newdoc)
+  div <- newXMLNode("head",
+                    parent=html)
+  css <- newXMLNode("style",
+                    attrs=c("style type"="text/css","class"="init"),
+                            paste0(dataTableCSS,collapse=""),
+                    parent=div)
+  tracktablescss <- newXMLNode("style",
+                               attrs=c("style type"="text/css","class"="init"),
+                                       paste0(tracktablesCSS,collapse=""),
+                               parent=div)  
+  jqueryjs <- newXMLNode("script",
+                         attrs=c(type="text/javascript",language="javascript"),
+                                 paste0(jqueryJS,collapse=""),
+                         parent=div)
+  datatablejs <- newXMLNode("script",
+                            attrs=c(type="text/javascript",language="javascript"),
+                                    paste0(dataTableJS,collapse=""),
+                            parent=div)
+  jspart1.2js <- newXMLNode("script",
+                            attrs=c(type="text/javascript",language="javascript"),
+                            paste0(jspart1.2,collapse=""),
+                            parent=div)
+  div2 <- newXMLNode("body",
+                    parent=html)
+  section <- newXMLNode("section",
+                        parent=div2)
+  divtttext <- newXMLNode("div",
+                          attrs=c(id="tttext"),
+                          parent=section)
+
+  ul1 <- newXMLNode("ul","",
+                    parent=divtttext)
+  li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this <a class=\"main\" href=\"http://www.broadinstitute.org/igv/projects/current/igv.php\">webstart</a>.",
+                    parent=ul1,cdata=TRUE)
+  div2 <- newXMLNode("div",
+                     attrs=c(id="demo"),
+                     parent=section)
+  return(gsub("</body>|<body>|</html>|<html>|</head>|<head>","",
+              saveXML(newdoc)))
+  
 }
 
 #' Make HTML pages for interval files or GRanges.

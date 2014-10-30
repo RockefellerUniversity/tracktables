@@ -218,7 +218,7 @@ The tracktables report is created from a call to \texttt{maketracktable}. By def
 
 HTMLreport <- maketracktable(fileSheet=FileSheet,
                                SampleSheet=SampleSheet,
-                               filename="IGVExample.html",
+                               filename="IGVEx3.html",
                                basedirectory=file.path(getwd(),"IGVDirectory"),
                                genome="mm9")
 @
@@ -244,11 +244,11 @@ urlForFiles  <- "https://github.com/ThomasCarroll/tracktables-Data/raw/master/"
 # This will link to data and XMLs placed in github earlier. 
 # In practice a dedicated FTP would be required for larger files.
 HTMLreport <- maketracktable(fileSheet=FileSheet,SampleSheet=SampleSheet,
-                               filename="IGVExample.html",genome="mm9",
+                               filename="IGVEx4.html",genome="mm9",
                                basedirectory=urlForFiles,
                                full.xml.paths=T,
                                full.file.paths=T,
-                               writedirectory=getwd()
+                               writedirectory=file.path(getwd(),"IGVDirectory")
                              )
 @
 
@@ -269,7 +269,7 @@ In this report, the \texttt{full.xml.paths}  is set to false and all XML files a
 urlForFiles  <- "https://github.com/ThomasCarroll/tracktables-Data/raw/master/"
 
 HTMLreport <- maketracktable(fileSheet=FileSheet,SampleSheet=SampleSheet,
-                               filename="IGVExample.html",genome="mm9",
+                               filename="IGVEx5.html",genome="mm9",
                                basedirectory=urlForFiles,
                                full.xml.paths=F,
                                full.file.paths=T,
@@ -290,7 +290,7 @@ To use the full paths to sample files as specified in the filesheet, the \texttt
 urlForFiles  <- "https://github.com/ThomasCarroll/tracktables-Data/raw/master/"
 
 HTMLreport <- maketracktable(fileSheet=FileSheet,SampleSheet=SampleSheet,
-                               filename="IGVExample.html",genome="mm9",
+                               filename="IGVEx6.html",genome="mm9",
                                basedirectory=urlForFiles,
                                full.xml.paths=F,
                                full.file.paths=T,
