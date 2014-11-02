@@ -523,21 +523,57 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   html <- newXMLNode("html",parent=newdoc)
   div <- newXMLNode("head",
                     parent=html)
-  css <- newXMLNode("style",
-                    attrs=c("style type"="text/css","class"="init"),
-                            paste0(dataTableCSS,collapse=""),
+  #css <- newXMLNode("style",
+  #                  attrs=c("style type"="text/css","class"="init"),
+  #                          paste0(dataTableCSS,collapse=""),
+  #                  parent=div)
+  #tracktablescss <- newXMLNode("style",
+  #                             attrs=c("style type"="text/css","class"="init"),
+  #                                     paste0(tracktablesCSS,collapse=""),
+  #                             parent=div)  
+  #jqueryjs <- newXMLNode("script",
+  #                       attrs=c(type="text/javascript",language="javascript"),
+  #                               paste0(jqueryJS,collapse=""),
+  #                       parent=div)
+  #datatablejs <- newXMLNode("script",
+  #                          attrs=c(type="text/javascript",language="javascript"),
+  #                                  paste0(dataTableJS,collapse=""),
+  #                          parent=div)
+  #jspart1.2js <- newXMLNode("script",
+  #                          attrs=c(type="text/javascript",language="javascript"),
+  #                          paste0(jspart1.2,collapse=""),
+  #                          parent=div)
+  #div2 <- newXMLNode("body",
+  #                  parent=html)
+  #section <- newXMLNode("section",
+  #                      parent=div2)
+  #divtttext <- newXMLNode("div",
+  #                        attrs=c(id="tttext"),
+  #                        parent=section)
+
+  #ul1 <- newXMLNode("ul","",
+  #                  parent=divtttext)
+  #li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this <a class=\"main\" href=\"http://www.broadinstitute.org/igv/projects/current/igv.php\">webstart</a>.",
+  #                  parent=ul1,cdata=TRUE)
+  #div2 <- newXMLNode("div",
+  #                   attrs=c(id="demo"),
+  #                   parent=section)
+
+  css <- newXMLNode("link",
+                    attrs=c("rel"="stylesheet","type"="text/css",
+                            "href"="https://cdn.rawgit.com/ThomasCarroll/tracktables-Data/master/js/jquery.datatables.css"),
                     parent=div)
-  tracktablescss <- newXMLNode("style",
-                               attrs=c("style type"="text/css","class"="init"),
-                                       paste0(tracktablesCSS,collapse=""),
+  tracktablescss <- newXMLNode("link",
+                               attrs=c("rel"="stylesheet","type"="text/css",
+                               "href"="https://cdn.rawgit.com/ThomasCarroll/tracktables-Data/master/js/tracktables.css"),
                                parent=div)  
   jqueryjs <- newXMLNode("script",
-                         attrs=c(type="text/javascript",language="javascript"),
-                                 paste0(jqueryJS,collapse=""),
+                         attrs=c(type="text/javascript",language="javascript",
+                                "src"="https://cdn.rawgit.com/ThomasCarroll/tracktables-Data/master/js/jquery.min.js"),
                          parent=div)
   datatablejs <- newXMLNode("script",
-                            attrs=c(type="text/javascript",language="javascript"),
-                                    paste0(dataTableJS,collapse=""),
+                            attrs=c(type="text/javascript",language="javascript",
+                            "src"="https://cdn.rawgit.com/ThomasCarroll/tracktables-Data/master/js/datatables.js"),
                             parent=div)
   jspart1.2js <- newXMLNode("script",
                             attrs=c(type="text/javascript",language="javascript"),
@@ -550,7 +586,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   divtttext <- newXMLNode("div",
                           attrs=c(id="tttext"),
                           parent=section)
-
+  
   ul1 <- newXMLNode("ul","",
                     parent=divtttext)
   li1 <- newXMLNode("li","To take advantage of the integration with IGV, <b>IGV must be already running </b>on your machine or can be launched now from this <a class=\"main\" href=\"http://www.broadinstitute.org/igv/projects/current/igv.php\">webstart</a>.",
@@ -558,8 +594,14 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
   div2 <- newXMLNode("div",
                      attrs=c(id="demo"),
                      parent=section)
-  return(gsub("</body>|<body>|</html>|<html>|</head>|<head>","",
-              saveXML(newdoc)))
+  
+  
+  return(
+    gsub("\\\\\"","'",
+      gsub("</body>|<body>|</html>|<html>|</head>|<head>","",
+              saveXML(newdoc))
+    )
+  )
   
 }
 
