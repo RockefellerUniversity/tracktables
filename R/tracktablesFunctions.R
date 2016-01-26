@@ -635,7 +635,7 @@ makebedtable <- function(grangesObject,name,basedirectory){
   tracktablesCSS <- readLines(system.file(package="tracktables","js","tracktables.css"))
   
   grangesFrame <- as.matrix(as.data.frame(grangesObject))
-  grangesFrame <- str_trim(grangesFrame)
+  grangesFrame <- apply(grangesFrame,2,str_trim)
   jsarray <- paste("[",paste0("[",apply(grangesFrame,1,function(x)paste0(c(shQuote(c(paste0("<a class=\"table\" href=\"http://localhost:60151/goto?locus=",x[1],":",x[2],"-",x[3],"\">IGV</a>"))),shQuote(x)),collapse=",")),"]",collapse=",\n"),"]")
   jsArrayForIGV <- paste0("var igvtable =",jsarray,";\n")
   jspart2 <- paste0(
@@ -1105,6 +1105,95 @@ igvParam <- function(
   
   
   return(igvParamReturn)
+}
+
+
+implode <- function (strings, sep = "", finalSep = NULL, ranges = FALSE)
+{
+  # Transform runs of integers into ranges
+  # This is surprisingly tricky to get right!
+  if (ranges && is.integer(strings))
+  {
+    # Perform run-length encoding on the differences between elements
+    gapRunLengths <- rle(diff(strings))
+    
+    # Mark all elements not taken and find ranges (>1 consecutive unit difference)
+    taken <- rep(FALSE, length(strings))
+    withinRange <- gapRunLengths$values == 1 & gapRunLengths$lengths > 1
+    
+    # Convert range groups into strings, marking elements as taken to avoid double-counting
+    rangeStrings <- lapply(which(withinRange), function(i) {
+      # NB: Sum of a length-zero vector is zero
+      start <- sum(gapRunLengths$lengths[seq_len(i-1)]) + 1
+      end <- start + gapRunLengths$lengths[i]
+      taken[start:end] <<- TRUE
+      return (paste(strings[start], strings[end], sep="-"))
+    })
+    
+    # Convert remaining elements into strings
+    nonRangeStrings <- lapply(which(!withinRange), function(i) {
+      start <- sum(gapRunLengths$lengths[seq_len(i-1)]) + 1
+      end <- start + gapRunLengths$lengths[i]
+      toKeep <- setdiff(start:end, which(taken))
+      taken[toKeep] <<- TRUE
+      return (as.character(strings)[toKeep])
+    })
+    
+    # Arrange list of strings in the right order, and convert back to character vector
+    strings <- vector("list", length(withinRange))
+    strings[withinRange] <- rangeStrings
+    strings[!withinRange] <- nonRangeStrings
+    strings <- unlist(strings)
+  }
+  else
+    strings <- as.character(strings)
+  
+  if (length(strings) == 1)
+    return (strings[1])
+  else if (length(strings) > 1)
+  {
+    result <- strings[1]
+    for (i in 2:length(strings))
+    {
+      if (i == length(strings) && !is.null(finalSep))
+        result <- paste(result, strings[i], sep=finalSep)
+      else
+        result <- paste(result, strings[i], sep=sep)
+    }
+    return (result)
+  }
+}
+
+
+relativePath <- function (path, referencePath)
+{
+  mainPieces <- strsplit(expandFileName(path), .Platform$file.sep, fixed=TRUE)[[1]]
+  refPieces <- strsplit(expandFileName(referencePath), .Platform$file.sep, fixed=TRUE)[[1]]
+  
+  shorterLength <- min(length(mainPieces), length(refPieces))
+  firstDifferentPiece <- min(which(mainPieces[1:shorterLength] != refPieces[1:shorterLength])[1], shorterLength, na.rm=TRUE)
+  newPieces <- c(rep("..", length(refPieces)-firstDifferentPiece), mainPieces[firstDifferentPiece:length(mainPieces)])
+  
+  return (implode(newPieces, sep=.Platform$file.sep))
+}
+
+expandFileName <- function (fileName, base = getwd())
+{
+  fileName <- path.expand(fileName)
+  
+  # A leading slash, with (Windows) or without (Unix) a letter and colon, indicates an absolute path
+  fileName <- ifelse(fileName %~% "^([A-Za-z]:)?/", fileName, file.path(base,fileName))
+  
+  # Remove all instances of '/.' (which are redundant), recursively collapse
+  # instances of '/..', and remove trailing slashes
+  fileName <- gsub("/\\.(?=/)", "", fileName, perl=TRUE)
+  while (length(grep("/../", fileName, fixed=TRUE) > 0))
+    fileName <- sub("/[^/]*[^./][^/]*/\\.\\.(?=/)", "", fileName, perl=TRUE)
+  if (length(grep("/..$", fileName, perl=TRUE) > 0))
+    fileName <- sub("/[^/]*[^./][^/]*/\\.\\.$", "", fileName, perl=TRUE)
+  fileName <- gsub("/*\\.?$", "", fileName, perl=TRUE)
+  
+  return (fileName)
 }
 
 
