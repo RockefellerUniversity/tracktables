@@ -361,7 +361,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     }
     if(!is.null(colourBy)){
         nOfGroups <- length(unique(SampleSheet[,colourBy]))
-        groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
+        groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Paired"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
     }else{
         groupColours <- NULL
     }
