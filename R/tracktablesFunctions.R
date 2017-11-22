@@ -13,6 +13,7 @@
 #'    First column must contain unique sample ids. 
 #' @param fileSheet A data.frame of file locations. First column must contain the unique sample ids.
 #' @param igvdirectory A character of the directory to which sample metadata file is written.
+#' @param autoScaleGroup Boolean of whether to set all samples to be autoscaled as one group (useful for RNAseq)
 #' @return A character of file location for the IGV sample information file.
 #' @import IRanges GenomicRanges XVector Rsamtools tractor.base stringr XML RColorBrewer methods
 #' @include tracktablesFunctions.R
@@ -44,9 +45,10 @@
 #' MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory=getwd())
 #' 
 #' @export
-MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory){
+MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory,autoScaleGroup=TRUE){
     write.table("#sampleTable",file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
     colnames(SampleSheet)[1] <- "Linking_id"
+    SampleSheet <- data.frame(SampleSheet,"AUTOSCALE GROUP"=rep("Group 2",nrow(SampleSheet)),check.names = FALSE)
     sampleMetadata <- as.matrix(SampleSheet)
     SampleSheet <- as.matrix(fileSheet)
     suppressWarnings(write.table(sampleMetadata,file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=TRUE,quote=FALSE,append=TRUE,sep="\t"))
@@ -132,13 +134,13 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
     }else{
       Output <- file.path(writedirectory,paste(XMLname,".xml",sep=""))
     }
-    GlobalNode <- newXMLNode("Global",attrs=c(genome.value=genomeName,groupTracksBy="Linking_id",locus=locusName,version=3))
+    GlobalNode <- newXMLNode("Global",attrs=c(genome.value=genomeName,groupTracksBy="Linking_id",nextAutoscaleGroup="2",locus=locusName,version=3))
     ResourcesNode <- newXMLNode("Resources",parent=GlobalNode)
     if(full.xml.paths){
       sampleMetadataPath <- file.path(igvdirectory,"SampleMetadata.txt")
       relativePathSampleMetadataFlag <- "FALSE"
     }else{      
-      sampleMetadataPath <- relativePath(file.path(igvdirectory,"SampleMetadata.txt"),Output)
+      sampleMetadataPath <- relativePath(file.path(writedirectory,"SampleMetadata.txt"),Output)
       relativePathSampleMetadataFlag <- "TRUE"
       if(full.file.paths){
         sampleMetadataPath <- relativePath(file.path(writedirectory,"SampleMetadata.txt"),Output)  
@@ -361,7 +363,7 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     }
     if(!is.null(colourBy)){
         nOfGroups <- length(unique(SampleSheet[,colourBy]))
-        groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Paired"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
+        groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
     }else{
         groupColours <- NULL
     }
@@ -1105,95 +1107,6 @@ igvParam <- function(
   
   
   return(igvParamReturn)
-}
-
-
-implode <- function (strings, sep = "", finalSep = NULL, ranges = FALSE)
-{
-  # Transform runs of integers into ranges
-  # This is surprisingly tricky to get right!
-  if (ranges && is.integer(strings))
-  {
-    # Perform run-length encoding on the differences between elements
-    gapRunLengths <- rle(diff(strings))
-    
-    # Mark all elements not taken and find ranges (>1 consecutive unit difference)
-    taken <- rep(FALSE, length(strings))
-    withinRange <- gapRunLengths$values == 1 & gapRunLengths$lengths > 1
-    
-    # Convert range groups into strings, marking elements as taken to avoid double-counting
-    rangeStrings <- lapply(which(withinRange), function(i) {
-      # NB: Sum of a length-zero vector is zero
-      start <- sum(gapRunLengths$lengths[seq_len(i-1)]) + 1
-      end <- start + gapRunLengths$lengths[i]
-      taken[start:end] <<- TRUE
-      return (paste(strings[start], strings[end], sep="-"))
-    })
-    
-    # Convert remaining elements into strings
-    nonRangeStrings <- lapply(which(!withinRange), function(i) {
-      start <- sum(gapRunLengths$lengths[seq_len(i-1)]) + 1
-      end <- start + gapRunLengths$lengths[i]
-      toKeep <- setdiff(start:end, which(taken))
-      taken[toKeep] <<- TRUE
-      return (as.character(strings)[toKeep])
-    })
-    
-    # Arrange list of strings in the right order, and convert back to character vector
-    strings <- vector("list", length(withinRange))
-    strings[withinRange] <- rangeStrings
-    strings[!withinRange] <- nonRangeStrings
-    strings <- unlist(strings)
-  }
-  else
-    strings <- as.character(strings)
-  
-  if (length(strings) == 1)
-    return (strings[1])
-  else if (length(strings) > 1)
-  {
-    result <- strings[1]
-    for (i in 2:length(strings))
-    {
-      if (i == length(strings) && !is.null(finalSep))
-        result <- paste(result, strings[i], sep=finalSep)
-      else
-        result <- paste(result, strings[i], sep=sep)
-    }
-    return (result)
-  }
-}
-
-
-relativePath <- function (path, referencePath)
-{
-  mainPieces <- strsplit(expandFileName(path), .Platform$file.sep, fixed=TRUE)[[1]]
-  refPieces <- strsplit(expandFileName(referencePath), .Platform$file.sep, fixed=TRUE)[[1]]
-  
-  shorterLength <- min(length(mainPieces), length(refPieces))
-  firstDifferentPiece <- min(which(mainPieces[1:shorterLength] != refPieces[1:shorterLength])[1], shorterLength, na.rm=TRUE)
-  newPieces <- c(rep("..", length(refPieces)-firstDifferentPiece), mainPieces[firstDifferentPiece:length(mainPieces)])
-  
-  return (implode(newPieces, sep=.Platform$file.sep))
-}
-
-expandFileName <- function (fileName, base = getwd())
-{
-  fileName <- path.expand(fileName)
-  
-  # A leading slash, with (Windows) or without (Unix) a letter and colon, indicates an absolute path
-  fileName <- ifelse(fileName %~% "^([A-Za-z]:)?/", fileName, file.path(base,fileName))
-  
-  # Remove all instances of '/.' (which are redundant), recursively collapse
-  # instances of '/..', and remove trailing slashes
-  fileName <- gsub("/\\.(?=/)", "", fileName, perl=TRUE)
-  while (length(grep("/../", fileName, fixed=TRUE) > 0))
-    fileName <- sub("/[^/]*[^./][^/]*/\\.\\.(?=/)", "", fileName, perl=TRUE)
-  if (length(grep("/..$", fileName, perl=TRUE) > 0))
-    fileName <- sub("/[^/]*[^./][^/]*/\\.\\.$", "", fileName, perl=TRUE)
-  fileName <- gsub("/*\\.?$", "", fileName, perl=TRUE)
-  
-  return (fileName)
 }
 
 
