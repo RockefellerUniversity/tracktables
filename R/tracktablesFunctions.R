@@ -1,4 +1,4 @@
-#' Make sample metadata file for use with IGV.
+  #' Make sample metadata file for use with IGV.
 #'
 #' Creates sample metadata file for IGV from a Samplesheet of metadata and FileSheet of file locations.
 #'
@@ -48,7 +48,15 @@
 MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory,autoScaleGroup=TRUE){
     write.table("#sampleTable",file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,sep="\t")
     colnames(SampleSheet)[1] <- "Linking_id"
-    SampleSheet <- data.frame(SampleSheet,"AUTOSCALE GROUP"=rep("Group 2",nrow(SampleSheet)),check.names = FALSE)
+    if(is.logical(autoScaleGroup)){
+      SampleSheet <- data.frame(SampleSheet,"AUTOSCALE GROUP"=rep("Group 2",nrow(SampleSheet)),check.names = FALSE)
+    }else if(is.character(autoScaleGroup)){
+      if(any(colnames(SampleSheet) %in% autoScaleGroup)){
+        SampleSheet <- data.frame(SampleSheet,"AUTOSCALE GROUP"=paste0("Group ",SampleSheet[,colnames(SampleSheet) %in% autoScaleGroup]),check.names = FALSE)
+      }else{
+        SampleSheet <- data.frame(SampleSheet,"AUTOSCALE GROUP"=rep("Group 2",nrow(SampleSheet)),check.names = FALSE)
+      }
+    }
     sampleMetadata <- as.matrix(SampleSheet)
     SampleSheet <- as.matrix(fileSheet)
     suppressWarnings(write.table(sampleMetadata,file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=TRUE,quote=FALSE,append=TRUE,sep="\t"))
@@ -62,6 +70,11 @@ MakeIGVSampleMetadata <- function(SampleSheet,fileSheet,igvdirectory,autoScaleGr
     write.table(BigWigMappings,file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE,sep="\t")
     write.table("\n#Intervals",file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE,sep="\t")
     write.table(IntervalMappings,file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE,sep="\t")
+    if(any(colnames(SampleSheet) %in% "vcf")){
+      VcfMappings <- cbind(paste(SampleSheet[!is.na(SampleSheet[,"vcf"]),"SampleName"],"Vcf",sep="_"),SampleSheet[!is.na(SampleSheet[,"vcf"]),"SampleName"])
+      write.table("\n#Vcfs",file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE,sep="\t")
+      write.table(VcfMappings,file.path(igvdirectory,"SampleMetadata.txt"),row.names=FALSE,col.names=FALSE,quote=FALSE,append=TRUE,sep="\t")
+    }
     return(file.path(igvdirectory,"SampleMetadata.txt"))
 }
 
@@ -150,18 +163,23 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
     PanelDataNode <- newXMLNode("Panel",attrs=c(height="350",name="DataPanel",width="1115"),parent=GlobalNode)
     bamFiles <- SampleSheet[,"bam"]
     bigwigFiles <- SampleSheet[,"bigwig"]
-    intervalFiles <- SampleSheet[,"interval"]    
+    intervalFiles <- SampleSheet[,"interval"] 
+    if(any(colnames(SampleSheet) %in% "vcf")){
+      vcfFiles <- SampleSheet[,"vcf"] 
+    }
     resources <- vector("list")
     for(i in 1:nrow(SampleSheet)){
         if(!is.null(colourBy)){
             colourIGVbam <- colourBy[i]
             colourIGVbigWig <- colourBy[i]
             colourIGVinterval <- colourBy[i]
+            colourIGVvcf <- colourBy[i]
         }else{
             #print(paste0(col2rgb(igvParams[[i]]@bigwig.color),collapse=","))
             colourIGVbam <- paste0(col2rgb(igvParams[[i]]@bam.color),collapse=",")
             colourIGVbigWig <- paste0(col2rgb(igvParams[[i]]@bigwig.color),collapse=",")
-            colourIGVinterval <- paste0(col2rgb(igvParams[[i]]@interval.color),collapse=",")              
+            colourIGVinterval <- paste0(col2rgb(igvParams[[i]]@interval.color),collapse=",")
+            colourIGVvcf <- paste0(col2rgb(igvParams[[i]]@vcf.color),collapse=",")
         }
         if(!is.na(SampleSheet[i,"bam"])){
             NewName <- paste(SampleSheet[i,"SampleName"],"_Bam",sep="")
@@ -271,6 +289,44 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
                                                                 type=igvParams[[i]]@bigwig.type),
                                             parent=TrackNode)                           
         }
+      ##
+      if(any(colnames(SampleSheet) %in% "vcf")){
+        if(!is.na(SampleSheet[i,"vcf"])){
+          
+          NewName <- paste(SampleSheet[i,"SampleName"],"_Vcf",sep="")
+          if(full.file.paths){
+            vcfFilePath <- file.path(igvdirectory,basename(unname(vcfFiles[i])))
+            relativePathvcfFlag <- FALSE
+          }else{
+            vcfFilePath <- relativePath(vcfFiles[i],Output)
+            relativePathvcfFlag <- TRUE
+          }
+          if(use.path.asis){
+            vcfFilePath <- unname(vcfFiles[i])
+            relativePathvcfFlag <- FALSE              
+          }             
+          resources <-  c(resources,list(newXMLNode("Resource",parent=ResourcesNode,attrs=c(label=NewName,name=NewName,path=vcfFilePath,relativePath=relativePathvcfFlag))))
+          TrackNode <-  newXMLNode("Track",attrs=c(id=vcfFilePath,
+                                                   name=NewName,
+                                                   autoScale=igvParams[[i]]@vcf.autoScale,
+                                                   altColor=paste0(col2rgb(igvParams[[i]]@vcf.altColor),collapse=","),
+                                                   color=colourIGVvcf,
+                                                   displayMode=igvParams[[i]]@vcf.displayMode,
+                                                   featureVisibilityWindow=as.character(igvParams[[i]]@vcf.featureVisibilityWindow),
+                                                   fontSize=as.character(igvParams[[i]]@vcf.fontSize),
+                                                   renderer=igvParams[[i]]@vcf.renderer,
+                                                   SQUISHED_ROW_HEIGHT=as.character(igvParams[[i]]@vcf.SQUISHED_ROW_HEIGHT),
+                                                   colorMode=igvParams[[i]]@vcf.colorMode,
+                                                   colorScale=igvParams[[i]]@vcf.colorScale,
+                                                   renderer=igvParams[[i]]@vcf.renderer,
+                                                   siteColorMode=igvParams[[i]]@vcf.siteColorMode,
+                                                   sortable=igvParams[[i]]@vcf.sortable,
+                                                   visible=igvParams[[i]]@vcf.visible,
+                                                   windowFunction=igvParams[[i]]@vcf.windowFunction),
+                                   parent=PanelDataNode)
+        }
+      }
+      ##
     }  
     saveXML(GlobalNode,file=Output)
   
@@ -340,9 +396,17 @@ MakeIGVSessionXML <- function(fileSheet,igvdirectory,XMLname,genomeName,locusNam
 #' @export
 maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,colourBy=NULL,
                            igvParams=igvParam(),writedirectory=NULL,
-                           full.xml.paths=FALSE,full.file.paths=FALSE,use.path.asis=FALSE){
+                           full.xml.paths=FALSE,full.file.paths=FALSE,use.path.asis=FALSE,autoScaleGroup=TRUE){
       message("tracktables uses the Datatables javascript libraries.
             For information on Datatables see http://datatables.net/")
+  
+  
+  SampleSheet <- SampleSheet[SampleSheet[,"SampleName"] %in% fileSheet[,"SampleName"],]
+  fileSheet <- fileSheet[fileSheet[,"SampleName"] %in% SampleSheet[,"SampleName"],]
+  
+  SampleSheet <- SampleSheet[order(SampleSheet[,"SampleName"]),]
+  fileSheet <- fileSheet[order(fileSheet[,"SampleName"]),]
+  
     if(class(igvParams) == "igvParam"){
       igvParams <- rep(list(igvParams),nrow(fileSheet))
     }
@@ -357,9 +421,9 @@ maketracktable <- function(fileSheet,SampleSheet,filename,basedirectory,genome,c
     if(is.null(writedirectory)) writedirectory <- basedirectory
     
     if(!full.xml.paths){
-      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory)
+      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory,autoScaleGroup=autoScaleGroup)
     }else{
-      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory)
+      MakeIGVSampleMetadata(SampleSheet,fileSheet,writedirectory,autoScaleGroup=autoScaleGroup)
     }
     if(!is.null(colourBy)){
         nOfGroups <- length(unique(SampleSheet[,colourBy]))
@@ -636,8 +700,13 @@ makebedtable <- function(grangesObject,name,basedirectory){
   dataTableScroller <- readLines(system.file(package="tracktables","js","dataTables.scroller.min.js"))
   tracktablesCSS <- readLines(system.file(package="tracktables","js","tracktables.css"))
   
-  grangesFrame <- as.matrix(as.data.frame(grangesObject))
-  grangesFrame <- apply(grangesFrame,2,str_trim)
+  if(length(grangesObject) != 1){
+    grangesFrame <- as.matrix(as.data.frame(grangesObject))
+    grangesFrame <- apply(grangesFrame,2,str_trim)
+  }else{
+    grangesFrame <- as.matrix(as.data.frame(grangesObject))
+    grangesFrame[1,] <- str_trim(grangesFrame[1,])
+  }
   jsarray <- paste("[",paste0("[",apply(grangesFrame,1,function(x)paste0(c(shQuote(c(paste0("<a class=\"table\" href=\"http://localhost:60151/goto?locus=",x[1],":",x[2],"-",x[3],"\">IGV</a>"))),shQuote(x)),collapse=",")),"]",collapse=",\n"),"]")
   jsArrayForIGV <- paste0("var igvtable =",jsarray,";\n")
   jspart2 <- paste0(
@@ -826,7 +895,7 @@ GetGRanges <- function(LoadFile,AllChr=NULL,ChrOfInterest=NULL,simple=FALSE,sepr
 #' @export
 MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=NULL,
                            igvParams=igvParam(),writedirectory=NULL,full.xml.paths=FALSE,full.file.paths=FALSE,
-                           use.path.asis=FALSE){
+                           use.path.asis=FALSE,autoScaleGroup=TRUE){
   if(!is.null(colourBy)){
     nOfGroups <- length(unique(SampleSheet[,colourBy]))
     groupColours <- apply(t(col2rgb(brewer.pal(nOfGroups,"Set3"))),1,function(x)paste0(x,collapse=","))[factor(SampleSheet[,colourBy])]
@@ -834,7 +903,7 @@ MakeIGVSession <- function(SampleSheet,fileSheet,igvdirectory,XMLname,genomeName
     groupColours <- NULL
   }
   
-  MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory)
+  MakeIGVSampleMetadata(SampleSheet,fileSheet,igvdirectory,autoScaleGroup=autoScaleGroup)
   sessionxml <- MakeIGVSessionXML(fileSheet,igvdirectory,XMLname,genomeName,locusName="All",colourBy=groupColours,igvParams=igvParams,full.xml.paths=full.xml.paths,full.file.paths=full.file.paths,use.path.asis=use.path.asis)  
   return(sessionxml)
 }
@@ -1001,7 +1070,22 @@ igvParam <- setClass("igvParam",
                                bam.shadeBasesOption="character",
                                bam.shadeCenters="character",
                                bam.showAllBases="character",
-                               bam.sortByTag="character"                            
+                               bam.sortByTag="character",
+                               
+                               vcf.SQUISHED_ROW_HEIGHT="numeric",
+                               vcf.color="character",
+                               vcf.autoScale="character",
+                               vcf.altColor="character",
+                               vcf.displayMode="character",
+                               vcf.featureVisibilityWindow="numeric",
+                               vcf.fontSize="numeric",
+                               vcf.colorMode="character",
+                               vcf.colorScale="character",
+                               vcf.renderer="character",
+                               vcf.siteColorMode="character",
+                               vcf.sortable="character",
+                               vcf.visible="character",
+                               vcf.windowFunction="character"
                      )
 )
 
@@ -1056,7 +1140,22 @@ igvParam <- function(
   bam.shadeBasesOption="QUALITY",
   bam.shadeCenters="true",
   bam.showAllBases="false",
-  bam.sortByTag=""){
+  bam.sortByTag="",
+  
+  vcf.SQUISHED_ROW_HEIGHT=1,
+  vcf.color="darkgrey",
+  vcf.autoScale="false",
+  vcf.altColor="darkgrey",
+  vcf.displayMode="EXPANDED",
+  vcf.featureVisibilityWindow=-1,
+  vcf.fontSize=10,
+  vcf.colorMode="GENOTYPE",
+  vcf.colorScale="ContinuousColorScale;0.0;0.0;255,255,255;0,0,178",
+  vcf.renderer="BASIC_FEATURE",
+  vcf.siteColorMode="ALLELE_FREQUENCY",
+  vcf.sortable="false",
+  vcf.visible="true",
+  vcf.windowFunction="count"){
   
   igvParamReturn <- new("igvParam",
                         bigwig.altColor=bigwig.altColor,
@@ -1103,7 +1202,21 @@ igvParam <- function(
                         bam.minInsertSize=bam.minInsertSize,
                         bam.shadeBasesOption=bam.shadeBasesOption,
                         bam.shadeCenters=bam.shadeCenters,
-                        bam.sortByTag=bam.sortByTag)                                         
+                        bam.sortByTag=bam.sortByTag,
+                        vcf.SQUISHED_ROW_HEIGHT=vcf.SQUISHED_ROW_HEIGHT,
+                        vcf.color=vcf.color,
+                        vcf.autoScale=vcf.autoScale,
+                        vcf.altColor=vcf.altColor,
+                        vcf.displayMode=vcf.displayMode,
+                        vcf.featureVisibilityWindow=vcf.featureVisibilityWindow,
+                        vcf.fontSize=vcf.fontSize,
+                        vcf.colorMode=vcf.colorMode,
+                        vcf.colorScale=vcf.colorScale,
+                        vcf.renderer=vcf.renderer,
+                        vcf.siteColorMode=vcf.siteColorMode,
+                        vcf.sortable=vcf.sortable,
+                        vcf.visible=vcf.visible,
+                        vcf.windowFunction=vcf.windowFunction)                                         
   
   
   return(igvParamReturn)
